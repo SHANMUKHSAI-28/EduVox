@@ -14,7 +14,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="navbar sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-secondary-100 shadow-soft">
+    <nav className="navbar fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-secondary-100 shadow-soft">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo */}
@@ -31,18 +31,23 @@ const Navbar = () => {
           {/* Navigation Links */}
           <div className="flex items-center space-x-6">
             {currentUser ? (
-              <>
-                <Link 
+              <>                <Link 
                   to="/dashboard" 
                   className="text-secondary-700 hover:text-primary-600 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-primary-50"
                 >
                   Dashboard
                 </Link>
-                  <Link 
+                <Link 
                   to="/universities" 
                   className="text-secondary-700 hover:text-primary-600 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-primary-50"
                 >
                   Universities
+                </Link>
+                <Link 
+                  to="/profile" 
+                  className="text-secondary-700 hover:text-primary-600 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-primary-50"
+                >
+                  Profile
                 </Link>
                 
                 {/* Admin Link - Only show for admin users */}

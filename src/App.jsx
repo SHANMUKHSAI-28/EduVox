@@ -32,7 +32,8 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-secondary-50">
       <Navbar />
-      <Routes>
+      <div className="pt-16"> {/* Add top padding to account for fixed navbar */}
+        <Routes>
         {/* Public routes */}
         <Route 
           path="/" 
@@ -88,6 +89,7 @@ function AppContent() {
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </div>
     </div>
   );
 }

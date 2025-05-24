@@ -34,33 +34,32 @@ const Sidebar = ({ isOpen, onClose }) => {
   ];
 
   return (
-    <>
-      {/* Mobile sidebar overlay */}
+    <>      {/* Mobile sidebar overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
+          className="fixed inset-0 z-30 bg-gray-600 bg-opacity-75 lg:hidden"
           onClick={onClose}
         ></div>
-      )}
-
-      {/* Sidebar */}
+      )}      {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
+        fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 pt-16
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex items-center justify-between h-16 px-4 border-b border-secondary-200">
-          <h2 className="text-lg font-semibold text-secondary-800">Navigation</h2>
+        {/* Compact header - only show on mobile */}
+        <div className="lg:hidden flex items-center justify-between h-12 px-4 border-b border-secondary-200 bg-secondary-50">
+          <h2 className="text-base font-semibold text-secondary-800">Menu</h2>
           <button
             onClick={onClose}
-            className="lg:hidden rounded-md text-secondary-400 hover:text-secondary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="rounded-md text-secondary-400 hover:text-secondary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <nav className="mt-5 px-2">
+        {/* Navigation */}
+        <nav className="mt-2 lg:mt-4 px-2">
           <div className="space-y-1">
             {navigationItems.map((item) => {
               const isActive = location.pathname === item.href;
@@ -69,9 +68,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                   key={item.name}
                   to={item.href}
                   className={`
-                    group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors
+                    group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200
                     ${isActive
-                      ? 'bg-primary-100 text-primary-900 border-r-2 border-primary-600'
+                      ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-900 border-r-2 border-primary-600 shadow-sm'
                       : 'text-secondary-600 hover:bg-secondary-50 hover:text-secondary-900'
                     }
                   `}
@@ -80,7 +79,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <span className={`mr-3 ${isActive ? 'text-primary-600' : 'text-secondary-400 group-hover:text-secondary-500'}`}>
                     {item.icon}
                   </span>
-                  {item.name}
+                  <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}
