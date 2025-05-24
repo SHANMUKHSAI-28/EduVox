@@ -1,0 +1,19 @@
+{
+  "name": "eduvox",
+  "version": "1.0.0",
+  "description": "Modular student consultancy platform",
+  "main": "server/server.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start"
+  },
+  "keywords": ["education", "consultancy", "student", "university"],
+  "author": "EduVox Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
