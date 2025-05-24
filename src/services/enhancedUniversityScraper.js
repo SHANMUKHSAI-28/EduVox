@@ -7,7 +7,8 @@ import { db } from '../firebaseConfig.js';
 
 class EnhancedUniversityScraper {
   constructor() {
-    this.apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    this.apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://maps.googleapis.com/maps/api';
+    this.googleApiKey = import.meta.env.VITE_GOOGLE_API_KEY;
     this.existingUniversities = [];
   }
 
@@ -210,26 +211,30 @@ class EnhancedUniversityScraper {
           console.log(`🔍 DEBUG: Reached maxResults (${maxResults}), breaking from query loop`);
           break;
         }
-        
-        try {
+          try {
           onProgress?.({ type: 'info', message: `🔍 Searching with query: "${query}"` });
-          console.log(`🔍 DEBUG: Making API call to ${this.apiBaseUrl}/api/places/search`);
-          const response = await axios.post(`${this.apiBaseUrl}/api/places/search`, {
-            query,
-            type: 'university'
+          console.log(`🔍 DEBUG: Making API call to Google Places API`);
+          
+          const response = await axios.get(`${this.apiBaseUrl}/place/textsearch/json`, {
+            params: {
+              query: query,
+              type: 'university',
+              key: this.googleApiKey
+            }
           });
           
           console.log(`🔍 DEBUG: API response status: ${response.status}`);
           console.log(`🔍 DEBUG: API response data:`, response.data);
-            if (response.data && response.data.places) {
-            console.log(`🔍 DEBUG: Found ${response.data.places.length} places in response`);
-            for (const place of response.data.places) {
+          
+          if (response.data && response.data.results) {
+            console.log(`🔍 DEBUG: Found ${response.data.results.length} places in response`);
+            for (const place of response.data.results) {
               if (foundUniversities.length >= maxResults) {
                 console.log(`🔍 DEBUG: Reached maxResults in place processing loop`);
                 break;
               }
               
-              const name = place.displayName?.text || place.name || 'Unknown University';
+              const name = place.name || 'Unknown University';
               const normalizedName = name.toLowerCase().trim();
               console.log(`🔍 DEBUG: Processing place: ${name}`);
               
@@ -248,18 +253,18 @@ class EnhancedUniversityScraper {
               seenNames.add(normalizedName);
               const universityEntry = {
                 name: name,
-                place_id: place.id,
-                formatted_address: place.formattedAddress,
+                place_id: place.place_id,
+                formatted_address: place.formatted_address,
                 rating: place.rating,
                 types: place.types || []
               };
               foundUniversities.push(universityEntry);
-              console.log(`🔍 DEBUG: Added to foundUniversities: ${name} (place_id: ${place.id})`);
+              console.log(`🔍 DEBUG: Added to foundUniversities: ${name} (place_id: ${place.place_id})`);
               
               onProgress?.({ type: 'info', message: `📍 Found: ${name}` });
             }
           } else {
-            console.log(`🔍 DEBUG: No places data in response or response.data.places is empty`);
+            console.log(`🔍 DEBUG: No results data in response or response.data.results is empty`);
           }
             // Rate limiting
           console.log(`🔍 DEBUG: Adding 1-second delay before next query...`);
@@ -302,28 +307,36 @@ class EnhancedUniversityScraper {
     
     const lowerName = name.toLowerCase();
     return universityKeywords.some(keyword => lowerName.includes(keyword));  }
-
-  // Get university details using Google Places API v1 via proxy
+  // Get university details using Google Places API directly
   async getUniversityDetails(universityName, city, country) {
     try {
       console.log(`🔍 Fetching details for: ${universityName}`);
       
       const query = `${universityName} ${city} ${country}`;
       
-      // Search for the place using the proxy
-      const searchResponse = await axios.post(`${this.apiBaseUrl}/api/places/search`, {
-        query
+      // Search for the place using Google Places API
+      const searchResponse = await axios.get(`${this.apiBaseUrl}/place/textsearch/json`, {
+        params: {
+          query: query,
+          type: 'university',
+          key: this.googleApiKey
+        }
       });
       
-      if (searchResponse.data.places && searchResponse.data.places.length > 0) {
-        const place = searchResponse.data.places[0];
+      if (searchResponse.data.results && searchResponse.data.results.length > 0) {
+        const place = searchResponse.data.results[0];
         
-        // Get place details using the proxy
-        const detailsResponse = await axios.get(`${this.apiBaseUrl}/api/places/details/${place.id}`);
+        // Get place details using Google Places API
+        const detailsResponse = await axios.get(`${this.apiBaseUrl}/place/details/json`, {
+          params: {
+            place_id: place.place_id,
+            fields: 'name,formatted_address,rating,formatted_phone_number,website,photos,reviews,geometry',
+            key: this.googleApiKey
+          }
+        });
         
-        if (detailsResponse.data) {
-          // Response is already in the correct format from our proxy
-          return detailsResponse.data;
+        if (detailsResponse.data && detailsResponse.data.result) {
+          return detailsResponse.data.result;
         }
       }
       
@@ -700,24 +713,28 @@ class EnhancedUniversityScraper {
     }
     
     return { city: parts[0] || '', state: parts[1] || '' };
-  }
-  // Get detailed university information by place ID
+  }  // Get detailed university information by place ID
   async getUniversityDetailsByPlaceId(placeId) {
     try {
-      const response = await axios.get(`${this.apiBaseUrl}/api/places/details/${placeId}`);
+      const response = await axios.get(`${this.apiBaseUrl}/place/details/json`, {
+        params: {
+          place_id: placeId,
+          fields: 'name,formatted_address,rating,formatted_phone_number,website,photos,reviews,geometry,opening_hours',
+          key: this.googleApiKey
+        }
+      });
       
-      if (response.data) {
-        // Handle both new API v1 format and legacy format
-        const details = response.data;
+      if (response.data && response.data.result) {
+        const details = response.data.result;
         return {
-          website_url: details.websiteUri || details.website_url || null,
-          formatted_address: details.formattedAddress || details.formatted_address || null,
-          phone_number: details.phoneNumber || details.phone_number || null,
+          website_url: details.website || null,
+          formatted_address: details.formatted_address || null,
+          phone_number: details.formatted_phone_number || null,
           rating: details.rating || null,
           photos: details.photos ? details.photos.slice(0, 3).map(photo => 
-            photo.name || `${this.apiBaseUrl}/api/places/photo?photo_reference=${photo.photo_reference}&maxwidth=400`
+            `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photo.photo_reference}&maxwidth=400&key=${this.googleApiKey}`
           ) : [],
-          reviews_count: details.reviews_count || (details.reviews ? details.reviews.length : 0),
+          reviews_count: details.reviews ? details.reviews.length : 0,
           opening_hours: details.opening_hours || null
         };
       }
