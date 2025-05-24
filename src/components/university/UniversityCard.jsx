@@ -94,32 +94,41 @@ const UniversityCard = ({
               </span>
             </div>
           </div>
-        </div>
-
-        {/* Save Button */}
-        <button
-          onClick={handleSaveToggle}
-          disabled={saving}
-          className={`p-2 rounded-xl transition-all duration-300 ${
-            isSaved
-              ? 'text-danger-600 hover:bg-danger-50 hover:text-danger-700'
-              : 'text-secondary-400 hover:bg-primary-50 hover:text-primary-600'
-          } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {saving ? (
-            <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          ) : isSaved ? (
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M3.172 5.172a4 4 0 015.656 0L12 8.343l3.172-3.171a4 4 0 115.656 5.656L12 19.657l-8.828-8.829a4 4 0 010-5.656z" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
+        </div>        {/* Shortlist Button */}
+        <div className="flex items-center gap-2">
+          {/* Heart Icon */}
+          <button
+            onClick={handleSaveToggle}
+            disabled={saving}
+            title={isSaved ? 'Remove from shortlist' : 'Add to shortlist'}
+            className={`p-2 rounded-xl transition-all duration-300 ${
+              isSaved
+                ? 'text-danger-600 hover:bg-danger-50 hover:text-danger-700 bg-danger-50'
+                : 'text-secondary-400 hover:bg-primary-50 hover:text-primary-600'
+            } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {saving ? (
+              <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            ) : isSaved ? (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M3.172 5.172a4 4 0 015.656 0L12 8.343l3.172-3.171a4 4 0 115.656 5.656L12 19.657l-8.828-8.829a4 4 0 010-5.656z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            )}
+          </button>
+          
+          {/* Shortlist Badge for Saved Universities */}
+          {isSaved && (
+            <span className="px-2 py-1 text-xs font-semibold bg-success-100 text-success-700 rounded-full border border-success-200">
+              Shortlisted
+            </span>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Match Badge */}
@@ -237,9 +246,7 @@ const UniversityCard = ({
             )}
           </div>
         )}
-      </div>
-
-      {/* Action Buttons */}
+      </div>      {/* Action Buttons */}
       <div className="flex gap-3">
         <Button
           variant="outline"
@@ -251,6 +258,29 @@ const UniversityCard = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
           Visit Website
+        </Button>
+        
+        <Button
+          variant={isSaved ? "primary" : "ghost"}
+          size="sm"
+          className="flex-1"
+          onClick={handleSaveToggle}
+          disabled={saving}
+        >
+          {saving ? (
+            <svg className="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          ) : isSaved ? (
+            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M3.172 5.172a4 4 0 015.656 0L12 8.343l3.172-3.171a4 4 0 115.656 5.656L12 19.657l-8.828-8.829a4 4 0 010-5.656z" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          )}
+          {isSaved ? 'Shortlisted' : 'Shortlist'}
         </Button>
         
         {onCompare && (

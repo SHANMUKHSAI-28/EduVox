@@ -12,6 +12,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Universities from './pages/Universities';
+import ShortlistedUniversities from './pages/ShortlistedUniversities';
 import AdminPanel from './pages/AdminPanel';
 
 function AppContent() {
@@ -74,6 +75,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Universities />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/shortlisted" 
+          element={
+            <ProtectedRoute>
+              <ShortlistedUniversities />
             </ProtectedRoute>
           } 
         />

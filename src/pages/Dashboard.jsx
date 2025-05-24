@@ -95,11 +95,11 @@ const Dashboard = () => {
     if (profileCompletion >= 50) return 'bg-yellow-500';
     return 'bg-red-500';
   };
-
   const stats = [
     {
       name: 'Universities Shortlisted',
       value: savedUniversitiesCount.toString(),
+      href: '/shortlisted',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -208,40 +208,81 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
-              </div>{/* Stats grid */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+              </div>{/* Stats grid */}              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                 {stats.map((stat, index) => (
                   <div key={stat.name} className="group">
-                    <div className="bg-white/70 backdrop-blur-xl overflow-hidden shadow-xl rounded-2xl border border-white/20 hover:shadow-2xl hover:scale-105 transition-all duration-300">
-                      <div className="p-4 lg:p-6">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0">
-                            <div className={`${stat.color} rounded-2xl p-3 lg:p-4 text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                              {stat.icon}
+                    {stat.href ? (
+                      <a 
+                        href={stat.href}
+                        className="block bg-white/70 backdrop-blur-xl overflow-hidden shadow-xl rounded-2xl border border-white/20 hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer"
+                      >
+                        <div className="p-4 lg:p-6">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                              <div className={`${stat.color} rounded-2xl p-3 lg:p-4 text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                                {stat.icon}
+                              </div>
+                            </div>
+                            <div className="ml-4 lg:ml-5 w-0 flex-1">
+                              <dl>
+                                <dt className="text-xs lg:text-sm font-semibold text-secondary-600 truncate">
+                                  {stat.name}
+                                </dt>
+                                <dd className="text-xl lg:text-2xl font-bold text-secondary-900 mt-1">
+                                  {stat.value}
+                                </dd>
+                              </dl>
                             </div>
                           </div>
-                          <div className="ml-4 lg:ml-5 w-0 flex-1">
-                            <dl>
-                              <dt className="text-xs lg:text-sm font-semibold text-secondary-600 truncate">
-                                {stat.name}
-                              </dt>
-                              <dd className="text-xl lg:text-2xl font-bold text-secondary-900 mt-1">
-                                {stat.value}
-                              </dd>
-                            </dl>
+                        </div>
+                        <div className="bg-gradient-to-r from-primary-50 to-accent-50 px-4 lg:px-6 py-2 lg:py-3">
+                          <div className="text-xs text-secondary-500 font-medium flex items-center justify-between">
+                            <span>
+                              {index === 0 && "View your shortlist"}
+                              {index === 1 && "Ready to apply?"}
+                              {index === 2 && "Complete your profile"}
+                              {index === 3 && "Book a session"}
+                            </span>
+                            {index === 0 && (
+                              <svg className="w-4 h-4 text-secondary-400 group-hover:text-primary-500 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                      </a>
+                    ) : (
+                      <div className="bg-white/70 backdrop-blur-xl overflow-hidden shadow-xl rounded-2xl border border-white/20 hover:shadow-2xl hover:scale-105 transition-all duration-300">
+                        <div className="p-4 lg:p-6">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                              <div className={`${stat.color} rounded-2xl p-3 lg:p-4 text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                                {stat.icon}
+                              </div>
+                            </div>
+                            <div className="ml-4 lg:ml-5 w-0 flex-1">
+                              <dl>
+                                <dt className="text-xs lg:text-sm font-semibold text-secondary-600 truncate">
+                                  {stat.name}
+                                </dt>
+                                <dd className="text-xl lg:text-2xl font-bold text-secondary-900 mt-1">
+                                  {stat.value}
+                                </dd>
+                              </dl>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-gradient-to-r from-primary-50 to-accent-50 px-4 lg:px-6 py-2 lg:py-3">
+                          <div className="text-xs text-secondary-500 font-medium">
+                            {index === 0 && "View your shortlist"}
+                            {index === 1 && "Ready to apply?"}
+                            {index === 2 && "Complete your profile"}
+                            {index === 3 && "Book a session"}
                           </div>
                         </div>
                       </div>
-                      <div className="bg-gradient-to-r from-primary-50 to-accent-50 px-4 lg:px-6 py-2 lg:py-3">
-                        <div className="text-xs text-secondary-500 font-medium">
-                          {index === 0 && "Start exploring universities"}
-                          {index === 1 && "Ready to apply?"}
-                          {index === 2 && "Complete your profile"}
-                          {index === 3 && "Book a session"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>                ))}
+                    )}
+                  </div>))}
               </div>              {/* AdSense Banner */}
               <div className="mb-6">
                 <AdBanner 
