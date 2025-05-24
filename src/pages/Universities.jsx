@@ -4,10 +4,12 @@ import Sidebar from '../components/common/Sidebar';
 import AcademicProfileForm from '../components/university/AcademicProfileForm';
 import UniversityCard from '../components/university/UniversityCard';
 import UniversityFilters from '../components/university/UniversityFilters';
-import UniversityComparison from '../components/university/UniversityComparison';
+import UniversityComparison from '../components/university/UniversityComparisonEnhanced';
 import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import AdBanner from '../components/ads/AdBanner';
+import AdContainer from '../components/ads/AdContainer';
 import { 
   universityService, 
   academicProfileService, 
@@ -133,10 +135,9 @@ const Universities = () => {
   const handleRemoveSavedUniversity = (universityId) => {
     setSavedUniversities(prev => prev.filter(uni => uni.id !== universityId));
   };
-
   const handleCompareUniversity = (university) => {
-    if (comparisonUniversities.length >= 3) {
-      setAlert({ type: 'warning', message: 'You can compare up to 3 universities at once.' });
+    if (comparisonUniversities.length >= 10) {
+      setAlert({ type: 'warning', message: 'You can compare up to 10 universities at once.' });
       setTimeout(() => setAlert(null), 3000);
       return;
     }
@@ -148,7 +149,7 @@ const Universities = () => {
     }
 
     setComparisonUniversities(prev => [...prev, university]);
-    setAlert({ type: 'success', message: `${university.name} added to comparison (${comparisonUniversities.length + 1}/3)` });
+    setAlert({ type: 'success', message: `${university.name} added to comparison (${comparisonUniversities.length + 1}/10)` });
     setTimeout(() => setAlert(null), 3000);
   };
 
@@ -338,10 +339,25 @@ const Universities = () => {
                         <p className="mt-1 text-sm text-secondary-500">
                           Try adjusting your filters or search terms.
                         </p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                      </div>                    ) : (                      <>
+                        {/* AdSense Banner at Top */}
+                        <div className="mb-6">
+                          <AdBanner 
+                            slot={import.meta.env.VITE_ADSENSE_BANNER_SLOT}
+                            size="large" 
+                            format="horizontal"
+                          />
+                        </div>
+
+                        <AdContainer 
+                          adSlots={[
+                            import.meta.env.VITE_ADSENSE_ARTICLE_SLOT,
+                            import.meta.env.VITE_ADSENSE_SIDEBAR_SLOT
+                          ]}
+                          adFrequency={4} 
+                          adSize="medium"
+                          className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
+                        >
                           {universities.map((university) => {
                             const isSaved = savedUniversities.some(saved => saved.id === university.id);
                             return (
@@ -357,7 +373,7 @@ const Universities = () => {
                               />
                             );
                           })}
-                        </div>
+                        </AdContainer>
 
                         {/* Load More Button */}
                         {hasMore && (
@@ -423,10 +439,23 @@ const Universities = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                           Export PDF
-                        </Button>
+                        </Button>                      </div>                      
+                      {/* AdSense Banner for Saved Universities */}
+                      <div className="mb-6">
+                        <AdBanner 
+                          slot={import.meta.env.VITE_ADSENSE_SIDEBAR_SLOT}
+                          size="large" 
+                          format="horizontal"
+                        />
                       </div>
-                        {/* Universities Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                      {/* Universities Grid with AdSense */}
+                      <AdContainer 
+                        adSlots={[import.meta.env.VITE_ADSENSE_ARTICLE_SLOT]}
+                        adFrequency={5} 
+                        adSize="medium"
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                      >
                         {savedUniversities.map((university) => (
                           <UniversityCard
                             key={university.id}
@@ -437,7 +466,7 @@ const Universities = () => {
                             showMatch={false}
                           />
                         ))}
-                      </div>
+                      </AdContainer>
                     </div>
                   )}
                 </div>

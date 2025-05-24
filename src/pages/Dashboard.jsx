@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/common/Sidebar';
+import AdBanner from '../components/ads/AdBanner';
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -158,9 +159,17 @@ const Dashboard = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>              {/* Quick actions */}
+                  </div>                ))}
+              </div>              {/* AdSense Banner */}
+              <div className="mb-8">
+                <AdBanner 
+                  slot={import.meta.env.VITE_ADSENSE_BANNER_SLOT}
+                  size="large" 
+                  format="horizontal"
+                />
+              </div>
+
+              {/* Quick actions */}
               <div className="bg-white/70 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20 mb-10">
                 <div className="px-8 py-6">
                   <h3 className="text-2xl font-bold text-secondary-900 mb-6 flex items-center gap-3">
@@ -203,7 +212,15 @@ const Dashboard = () => {
                       </div>
                     ))}
                   </div>
-                </div>
+                </div>              </div>
+
+              {/* AdSense Article Ad */}
+              <div className="mb-8">
+                <AdBanner 
+                  slot={import.meta.env.VITE_ADSENSE_ARTICLE_SLOT}
+                  size="medium" 
+                  format="auto"
+                />
               </div>
 
               {/* Recent activity placeholder */}

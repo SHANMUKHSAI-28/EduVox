@@ -5,7 +5,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   signOut,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../firebaseConfig';
@@ -97,12 +98,20 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   };
-
   // Sign out
   const logout = async () => {
     try {
       await signOut(auth);
       setUserData(null);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Password reset
+  const resetPassword = async (email) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
     } catch (error) {
       throw error;
     }
@@ -129,6 +138,7 @@ export const AuthProvider = ({ children }) => {
     login,
     loginWithGoogle,
     logout,
+    resetPassword,
     loading
   };
 

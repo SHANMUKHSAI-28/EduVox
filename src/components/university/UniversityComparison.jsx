@@ -35,10 +35,11 @@ const UniversityComparison = ({ universities, onRemove, isOpen, onClose }) => {
       ...prev,
       [category]: !prev[category]
     }));
-  };
-  const exportComparison = () => {
+  };  const exportComparison = async () => {
     try {
-      exportComparisonPDF(universities, currentUser?.email);
+      await exportComparisonPDF(universities, currentUser?.email);
+      // Show success message (could add toast notification here if available)
+      console.log('Comparison PDF exported successfully');
     } catch (error) {
       console.error('Error exporting comparison PDF:', error);
       // Could add toast notification here if available
@@ -46,12 +47,11 @@ const UniversityComparison = ({ universities, onRemove, isOpen, onClose }) => {
   };
 
   if (!isOpen || universities.length === 0) return null;
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="University Comparison" size="max">
+    <Modal isOpen={isOpen} onClose={onClose} title={`University Comparison (${universities.length})`} size="max">
       <div className="space-y-6">
         {/* Header Controls */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex flex-wrap gap-2">
             {Object.entries(selectedCategories).map(([category, isSelected]) => (
               <button
@@ -76,29 +76,28 @@ const UniversityComparison = ({ universities, onRemove, isOpen, onClose }) => {
               Export
             </Button>
           </div>
-        </div>
-
-        {/* Comparison Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full border-separate border-spacing-0">
-            <thead>
-              <tr>
-                <th className="sticky left-0 bg-white/80 backdrop-blur-sm border-b-2 border-secondary-200 p-4 text-left font-semibold text-secondary-900 min-w-[200px]">
-                  University
-                </th>
-                {universities.map((university, index) => (
-                  <th
-                    key={university.id}
-                    className="border-b-2 border-secondary-200 p-4 text-center min-w-[250px] relative"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2">
-                        {university.logo_url && (
-                          <img
-                            src={university.logo_url}
-                            alt={`${university.name} logo`}
-                            className="w-8 h-8 rounded-lg object-cover"
-                            onError={(e) => { e.target.style.display = 'none'; }}
+        </div>        {/* Comparison Table */}
+        <div className="overflow-x-auto border border-secondary-200 rounded-lg">
+          <div className="min-w-max">
+            <table className="w-full border-separate border-spacing-0">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 bg-white/90 backdrop-blur-sm border-b-2 border-secondary-200 p-4 text-left font-semibold text-secondary-900 min-w-[200px] z-10 border-r border-secondary-200">
+                    University
+                  </th>
+                  {universities.map((university, index) => (
+                    <th
+                      key={university.id}
+                      className="border-b-2 border-secondary-200 p-4 text-center min-w-[200px] relative bg-white"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-2">
+                          {university.logo_url && (
+                            <img
+                              src={university.logo_url}
+                              alt={`${university.name} logo`}
+                              className="w-8 h-8 rounded-lg object-cover"
+                              onError={(e) => { e.target.style.display = 'none'; }}
                           />
                         )}
                         <h3 className="font-bold text-secondary-900 text-sm leading-tight">
@@ -122,9 +121,8 @@ const UniversityComparison = ({ universities, onRemove, isOpen, onClose }) => {
             <tbody>
               {/* Basic Information */}
               {selectedCategories.basic && (
-                <>
-                  <tr>
-                    <td className="sticky left-0 bg-white/80 backdrop-blur-sm border-b border-secondary-100 p-4 font-medium text-secondary-700">
+                <>                  <tr>
+                    <td className="sticky left-0 bg-white/90 backdrop-blur-sm border-b border-secondary-100 p-4 font-medium text-secondary-700 border-r border-secondary-200 z-10">
                       Location
                     </td>
                     {universities.map((university) => (
@@ -134,7 +132,7 @@ const UniversityComparison = ({ universities, onRemove, isOpen, onClose }) => {
                     ))}
                   </tr>
                   <tr>
-                    <td className="sticky left-0 bg-white/80 backdrop-blur-sm border-b border-secondary-100 p-4 font-medium text-secondary-700">
+                    <td className="sticky left-0 bg-white/90 backdrop-blur-sm border-b border-secondary-100 p-4 font-medium text-secondary-700 border-r border-secondary-200 z-10">
                       Type
                     </td>
                     {universities.map((university) => (
@@ -286,9 +284,9 @@ const UniversityComparison = ({ universities, onRemove, isOpen, onClose }) => {
                     </Button>
                   </td>
                 ))}
-              </tr>
-            </tbody>
+              </tr>            </tbody>
           </table>
+          </div>
         </div>
       </div>
     </Modal>

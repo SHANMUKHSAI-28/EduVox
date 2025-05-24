@@ -10,16 +10,29 @@ const AcademicProfileForm = ({ onSave }) => {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [alert, setAlert] = useState(null);
-  const [formData, setFormData] = useState({
+  const [alert, setAlert] = useState(null);  const [formData, setFormData] = useState({
+    // Personal Information
+    full_name: '',
+    nationality: '',
+    education_level: '',
+    
+    // Academic Information
     cgpa: '',
     ielts_score: '',
     toefl_score: '',
     gre_score: '',
+    
+    // Financial Information
     budget_min: '',
     budget_max: '',
+    
+    // Preferences
     preferred_countries: [],
-    preferred_fields_of_study: []
+    preferred_fields_of_study: [],
+    
+    // Timeline
+    target_intake: '',
+    target_year: ''
   });
 
   const countryOptions = [
@@ -34,7 +47,6 @@ const AcademicProfileForm = ({ onSave }) => {
     { value: 'New Zealand', label: 'New Zealand' },
     { value: 'Singapore', label: 'Singapore' }
   ];
-
   const fieldOptions = [
     { value: 'Computer Science', label: 'Computer Science' },
     { value: 'Data Science', label: 'Data Science' },
@@ -60,6 +72,27 @@ const AcademicProfileForm = ({ onSave }) => {
     { value: 'Mathematics', label: 'Mathematics' }
   ];
 
+  const educationLevelOptions = [
+    { value: 'high_school', label: 'High School' },
+    { value: 'undergraduate', label: 'Undergraduate (Bachelor\'s)' },
+    { value: 'graduate', label: 'Graduate (Master\'s)' },
+    { value: 'postgraduate', label: 'Postgraduate (PhD)' }
+  ];
+
+  const intakeOptions = [
+    { value: 'fall', label: 'Fall' },
+    { value: 'spring', label: 'Spring' },
+    { value: 'summer', label: 'Summer' },
+    { value: 'winter', label: 'Winter' }
+  ];
+
+  const yearOptions = [
+    { value: '2024', label: '2024' },
+    { value: '2025', label: '2025' },
+    { value: '2026', label: '2026' },
+    { value: '2027', label: '2027' }
+  ];
+
   useEffect(() => {
     loadAcademicProfile();
   }, [currentUser]);
@@ -67,19 +100,32 @@ const AcademicProfileForm = ({ onSave }) => {
   const loadAcademicProfile = async () => {
     if (!currentUser) return;
 
-    setLoading(true);
-    try {
+    setLoading(true);    try {
       const profile = await academicProfileService.getAcademicProfile(currentUser.uid);
       if (profile) {
         setFormData({
+          // Personal Information
+          full_name: profile.full_name || '',
+          nationality: profile.nationality || '',
+          education_level: profile.education_level || '',
+          
+          // Academic Information
           cgpa: profile.cgpa || '',
           ielts_score: profile.ielts_score || '',
           toefl_score: profile.toefl_score || '',
           gre_score: profile.gre_score || '',
+          
+          // Financial Information
           budget_min: profile.budget_min || '',
           budget_max: profile.budget_max || '',
+          
+          // Preferences
           preferred_countries: profile.preferred_countries || [],
-          preferred_fields_of_study: profile.preferred_fields_of_study || []
+          preferred_fields_of_study: profile.preferred_fields_of_study || [],
+          
+          // Timeline
+          target_intake: profile.target_intake || '',
+          target_year: profile.target_year || ''
         });
       }
     } catch (error) {
@@ -174,10 +220,74 @@ const AcademicProfileForm = ({ onSave }) => {
         <div className="mb-6">
           <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
         </div>
-      )}
+      )}      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Personal Information */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            Personal Information
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormInput
+              label="Full Name"
+              name="full_name"
+              type="text"
+              value={formData.full_name}
+              onChange={handleChange}
+              placeholder="Enter your full name"
+              required
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              }
+            />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+            <FormInput
+              label="Nationality"
+              name="nationality"
+              type="text"
+              value={formData.nationality}
+              onChange={handleChange}
+              placeholder="e.g., Indian, American"
+              required
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+                </svg>
+              }
+            />
+
+            <div className="md:col-span-2">
+              <FormSelect
+                label="Education Level"
+                name="education_level"
+                value={formData.education_level}
+                onChange={handleChange}
+                options={educationLevelOptions}
+                placeholder="Select your current education level"
+                required
+                icon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  </svg>
+                }
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Academic Scores */}
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Academic Scores
+          </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormInput
             label="CGPA (out of 4.0)"
@@ -242,11 +352,57 @@ const AcademicProfileForm = ({ onSave }) => {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-            }
-          />
+            }          />
+        </div>
+        </div>
+
+        {/* Timeline Information */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Study Timeline
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormSelect
+              label="Target Intake"
+              name="target_intake"
+              value={formData.target_intake}
+              onChange={handleChange}
+              options={intakeOptions}
+              placeholder="Select intake season"
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              }
+            />
+
+            <FormSelect
+              label="Target Year"
+              name="target_year"
+              value={formData.target_year}
+              onChange={handleChange}
+              options={yearOptions}
+              placeholder="Select year"
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              }
+            />
+          </div>
         </div>
 
         {/* Budget */}
+        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-6 border border-yellow-200">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+            Budget Range
+          </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormInput
             label="Minimum Budget (USD/year)"
@@ -275,8 +431,8 @@ const AcademicProfileForm = ({ onSave }) => {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
-            }
-          />
+            }          />
+        </div>
         </div>
 
         {/* Preferred Countries */}

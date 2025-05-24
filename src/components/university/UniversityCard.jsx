@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { savedUniversitiesService } from '../../services/universityService';
 import Button from '../common/Button';
+import UniversityLogo from './UniversityLogo';
 
 const UniversityCard = ({ 
   university, 
@@ -71,20 +72,14 @@ const UniversityCard = ({
   };
 
   return (
-    <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 group hover:scale-[1.02]">
-      {/* Header */}
+    <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 group hover:scale-[1.02]">      {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-4 flex-1">
-          {university.logo_url && (
-            <img
-              src={university.logo_url}
-              alt={`${university.name} logo`}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-white/50 shadow-lg"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
-          )}
+          <UniversityLogo 
+            university={university} 
+            size="lg"
+            className="flex-shrink-0"
+          />
           <div className="flex-1">
             <h3 className="text-xl font-bold text-secondary-900 group-hover:text-primary-600 transition-colors duration-300">
               {university.name}
