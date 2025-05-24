@@ -52,18 +52,41 @@ const Universities = () => {
       console.error('Error loading academic profile:', error);
     }
   };
-
   const loadUniversities = async (append = false) => {
     setLoading(true);
     try {
       let result;
-      
+        // Always use universityService.getUniversities for consistency
+      // Only apply academic profile matching if no manual filters are set
       if (academicProfile && Object.keys(filters).length === 0) {
-        // Get matched universities based on profile
-        result = { universities: await matchingService.getMatchedUniversities(academicProfile, filters) };
+        // Get matched universities based on academic profile
+        try {
+          const matchedUniversities = await matchingService.getMatchedUniversities(academicProfile, {});
+          
+          // If no matches found, fallback to showing all verified universities
+          if (matchedUniversities.length === 0) {
+            console.log('No matched universities found, showing all verified universities');
+            const fallbackResult = await universityService.getUniversities({ showUnverified: false }, 20, null, false);
+            result = fallbackResult;
+          } else {
+            result = { 
+              universities: matchedUniversities,
+              hasMore: false,
+              lastDoc: null
+            };
+          }
+        } catch (error) {
+          console.error('Error getting matched universities, falling back to all:', error);
+          // Fallback to showing all universities
+          result = await universityService.getUniversities({ showUnverified: false }, 20, null, false);
+        }
       } else {
-        // Get filtered universities
-        result = await universityService.getUniversities(filters, 20, append ? lastDoc : null);
+        // Get filtered universities - always show verified ones for students
+        const filterParams = {
+          ...filters,
+          showUnverified: false // Students should only see verified universities
+        };
+        result = await universityService.getUniversities(filterParams, 20, append ? lastDoc : null, false);
       }
 
       if (append) {
@@ -75,6 +98,7 @@ const Universities = () => {
       setHasMore(result.hasMore || false);
       setLastDoc(result.lastDoc || null);
     } catch (error) {
+      console.error('Error loading universities:', error);
       setAlert({ type: 'error', message: 'Failed to load universities' });
     } finally {
       setLoading(false);

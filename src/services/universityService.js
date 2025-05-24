@@ -18,23 +18,21 @@ import { db } from '../firebaseConfig';
 // University Database Operations
 export const universityService = {
   // Get universities with filters and pagination
-  async getUniversities(filters = {}, pageSize = 20, lastDoc = null) {
+  async getUniversities(filters = {}, pageSize = 20, lastDoc = null, showUnverified = false) {
     try {
       let q = collection(db, 'universities');
       
-      // Simplified query to avoid index requirements while they're building
+      // Temporarily simplified query to avoid index requirements while they're building
       const constraints = [];
       
-      // Only add admin_approved filter for now
-      if (filters.adminApproved !== undefined) {
-        constraints.push(where('admin_approved', '==', filters.adminApproved));
-      }
+      // For now, use a simple query to avoid complex index requirements
+      // Once indexes are built, we can enable the full filtering
       
-      // Add ordering
-      constraints.push(orderBy('ranking_overall', 'asc'));
+      // Add basic ordering that should work without complex indexes
+      constraints.push(orderBy('__name__'));
       
       // Add limit - fetch more to account for client-side filtering
-      constraints.push(limit(pageSize * 5));
+      constraints.push(limit(pageSize * 10));
       
       // Add pagination
       if (lastDoc) {
@@ -42,15 +40,29 @@ export const universityService = {
       }
       
       q = query(q, ...constraints);
-      
-      const snapshot = await getDocs(q);
+        const snapshot = await getDocs(q);
       let universities = [];
+      
+      console.log(`Fetched ${snapshot.docs.length} universities from database`);
+      console.log(`Show unverified: ${showUnverified}, Filters:`, filters);
       
       snapshot.forEach((doc) => {
         const data = { id: doc.id, ...doc.data() };
-        
-        // Apply filters in memory
+          // Apply ALL filters in memory since we're avoiding complex queries
         let includeUniversity = true;
+        
+        // Verification filter - simplified logic
+        if (!showUnverified) {
+          // For regular users, only show verified universities OR universities without verification status set
+          if (data.hasOwnProperty('isVerified') && data.isVerified === false) {
+            includeUniversity = false;
+          }
+        }
+        
+        // Admin approval filter
+        if (filters.adminApproved !== undefined && data.admin_approved !== filters.adminApproved) {
+          includeUniversity = false;
+        }
         
         if (filters.country && data.country !== filters.country) {
           includeUniversity = false;
@@ -67,11 +79,15 @@ export const universityService = {
         if (filters.tuitionMax !== undefined && data.tuition_min > filters.tuitionMax) {
           includeUniversity = false;
         }
-        
-        if (includeUniversity) {
+          if (includeUniversity) {
           universities.push(data);
         }
       });
+      
+      console.log(`After filtering: ${universities.length} universities included`);
+      
+      // Sort by ranking since we can't do it in the query
+      universities.sort((a, b) => (a.ranking_overall || 999) - (b.ranking_overall || 999));
       
       // Limit to requested page size
       const paginatedUniversities = universities.slice(0, pageSize);
@@ -79,7 +95,8 @@ export const universityService = {
       return {
         universities: paginatedUniversities,
         lastDoc: snapshot.docs[snapshot.docs.length - 1],
-        hasMore: universities.length > pageSize
+        hasMore: universities.length > pageSize,
+        indexFallback: true // Indicate this is using fallback
       };
     } catch (error) {
       console.error('Error fetching universities:', error);
@@ -367,12 +384,11 @@ export const matchingService = {
   },
 
   // Get matched universities for a student
-  async getMatchedUniversities(studentProfile, filters = {}) {
-    try {
+  async getMatchedUniversities(studentProfile, filters = {}) {    try {
       // First, get universities based on broad filters
       const broadFilters = {
-        ...filters,
-        adminApproved: true // Only show approved universities
+        ...filters
+        // Remove adminApproved requirement as it might conflict with verification
       };
       
       // Add country filter if student has preferences
@@ -389,7 +405,7 @@ export const matchingService = {
         broadFilters.tuitionMax = studentProfile.budget_max;
       }
       
-      const { universities } = await universityService.getUniversities(broadFilters, 100);
+      const { universities } = await universityService.getUniversities(broadFilters, 100, null, false);
       
       // Calculate match scores and filter
       const matchedUniversities = universities
