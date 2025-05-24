@@ -7,11 +7,7 @@ import { db } from '../firebaseConfig.js';
 
 class EnhancedUniversityScraper {
   constructor() {
-    this.googleApiKey = import.meta.env.VITE_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY;
-    
-    if (!this.googleApiKey) {
-      throw new Error('Google API key not found in environment variables');
-    }
+    this.apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
   }
 
   // Additional universities to scrape beyond the original 36
@@ -63,35 +59,27 @@ class EnhancedUniversityScraper {
     ];
   }
 
-  // Get university details using Google Places API
+  // Get university details using Google Places API v1 via proxy
   async getUniversityDetails(universityName, city, country) {
     try {
       console.log(`🔍 Fetching details for: ${universityName}`);
       
       const query = `${universityName} ${city} ${country}`;
-      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${this.googleApiKey}`;
       
-      const response = await axios.get(url);
+      // Search for the place using the proxy
+      const searchResponse = await axios.post(`${this.apiBaseUrl}/api/places/search`, {
+        query
+      });
       
-      if (response.data.results && response.data.results.length > 0) {
-        const place = response.data.results[0];
+      if (searchResponse.data.places && searchResponse.data.places.length > 0) {
+        const place = searchResponse.data.places[0];
         
-        // Get place details
-        const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,formatted_address,website,photos,rating,formatted_phone_number,reviews&key=${this.googleApiKey}`;
-        const detailsResponse = await axios.get(detailsUrl);
+        // Get place details using the proxy
+        const detailsResponse = await axios.get(`${this.apiBaseUrl}/api/places/details/${place.id}`);
         
-        if (detailsResponse.data.result) {
-          const details = detailsResponse.data.result;
-          return {
-            website_url: details.website || null,
-            formatted_address: details.formatted_address || null,
-            phone_number: details.formatted_phone_number || null,
-            rating: details.rating || null,
-            photos: details.photos ? details.photos.slice(0, 3).map(photo => 
-              `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${this.googleApiKey}`
-            ) : [],
-            reviews_count: details.reviews ? details.reviews.length : 0
-          };
+        if (detailsResponse.data) {
+          // Response is already in the correct format from our proxy
+          return detailsResponse.data;
         }
       }
       
@@ -335,55 +323,50 @@ class EnhancedUniversityScraper {
             university.country
           );
           
-          // Update with fresh data while preserving existing structure
-          const updatedData = {
-            ...university,
-            updated_at: serverTimestamp(),
-            google_data: details || university.google_data,
-            website_url: details?.website_url || university.website_url,
-            rating: details?.rating || university.rating,
-            photos: details?.photos || university.photos || [],
-            phone_number: details?.phone_number || university.phone_number,
-            formatted_address: details?.formatted_address || university.formatted_address,
-            reviews_count: details?.reviews_count || university.reviews_count || 0,
-            scraped_at: new Date().toISOString()
-          };
-          
-          // Remove undefined values
-          Object.keys(updatedData).forEach(key => {
-            if (updatedData[key] === undefined) {
-              delete updatedData[key];
-            }
-          });
-          
-          // Update in Firestore
-          await updateDoc(doc(db, 'universities', university.id), updatedData);
-          successCount++;
-          
-          onProgress?.({ 
-            type: 'success', 
-            message: `✅ Updated: ${university.name}` 
-          });
-          
-          // Rate limiting
-          await this.delay(800);
-          
+          if (details) {
+            // Update with fresh data while preserving existing structure
+            const updatedData = {
+              ...university,
+              updated_at: serverTimestamp(),
+              google_data: details,
+              website_url: details.website_url || university.website_url || null,
+              rating: details.rating || university.rating || null,
+              photos: details.photos || university.photos || [],
+              phone_number: details.phone_number || university.phone_number || null,
+              formatted_address: details.formatted_address || university.formatted_address || null,
+              reviews_count: details.reviews_count || university.reviews_count || 0,
+              scraped_at: new Date().toISOString()
+            };
+            
+            // Remove id before updating
+            const { id, ...dataToUpdate } = updatedData;
+            
+            await updateDoc(doc(db, 'universities', university.id), dataToUpdate);
+            successCount++;
+          } else {
+            onProgress?.({ 
+              type: 'warning', 
+              message: `⚠️ No new data found for ${university.name}` 
+            });
+          }
         } catch (error) {
-          errorCount++;
+          console.error(`❌ Failed to update ${university.name}:`, error);
           onProgress?.({ 
             type: 'error', 
             message: `❌ Failed to update ${university.name}: ${error.message}` 
           });
+          errorCount++;
         }
       }
       
-      return { successCount, errorCount, total: existingUniversities.length };
-      
-    } catch (error) {
       onProgress?.({ 
-        type: 'error', 
-        message: `❌ Failed to fetch universities: ${error.message}` 
+        type: 'success', 
+        message: `✅ Update complete: ${successCount} successful, ${errorCount} failed` 
       });
+      
+      return { successCount, errorCount };
+    } catch (error) {
+      console.error('Error updating universities:', error);
       throw error;
     }
   }
