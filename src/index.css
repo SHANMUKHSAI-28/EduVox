@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body {
+    @apply bg-secondary-50 text-secondary-900 font-sans antialiased;
+    font-family: 'Inter', 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-secondary-900;
+    line-height: 1.2;
+  }
+}
+
+@layer components {
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-secondary-100;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-secondary-300 rounded-full;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-secondary-400;
+  }
+  
+  /* Glass morphism effects */
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  /* Card hover effects */
+  .card-hover {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .card-hover:hover {
+    @apply transform -translate-y-2 shadow-xl;
+  }
+  
+  /* Button glow effect */
+  .btn-glow {
+    @apply relative overflow-hidden;
+  }
+  
+  .btn-glow::before {
+    content: '';
+    @apply absolute inset-0 bg-white opacity-0 transition-opacity duration-300;
+  }
+  
+  .btn-glow:hover::before {
+    @apply opacity-10;
+  }
+  
+  /* Navigation styles */
+  .navbar {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  /* Feature cards */
+  .feature-card {
+    @apply bg-white rounded-2xl p-8 shadow-md transition-all duration-300 ease-in-out border border-secondary-100;
+  }
+  
+  .feature-card:hover {
+    @apply transform -translate-y-2 shadow-2xl border-primary-200;
+  }
+  
+  /* Form styles */
+  .form-input {
+    @apply w-full px-4 py-3 border-2 border-secondary-200 rounded-lg bg-white text-secondary-900 text-base transition-all duration-200 ease-in-out;
+  }
+  
+  .form-input:focus {
+    @apply outline-none border-primary-500 ring-4 ring-primary-100;
+  }
+  
+  .form-input:hover {
+    @apply border-secondary-300;
+  }
+  
+  .form-label {
+    @apply block mb-2 font-medium text-secondary-700;
+  }
+  
+  /* Status indicators */
+  .status-success {
+    @apply text-success-600 bg-success-50 px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .status-warning {
+    @apply text-warning-600 bg-warning-50 px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .status-danger {
+    @apply text-danger-600 bg-danger-50 px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  /* Loading spinner */
+  .loading-spinner {
+    @apply w-6 h-6 border-2 border-secondary-200 border-t-primary-500 rounded-full animate-spin;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Gradient text */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-gradient-accent {
+    background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
