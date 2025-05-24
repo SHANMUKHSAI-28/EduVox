@@ -1,15 +1,29 @@
 // Quick test script to check university loading
+import dotenv from 'dotenv';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, query, limit } from 'firebase/firestore';
 
+// Load environment variables
+dotenv.config();
+
 const firebaseConfig = {
-  apiKey: "AIzaSyDZuVIb6mSZYqKAp3LnKm8qTyE9DhAo-_8",
-  authDomain: "eduvox-a5f31.firebaseapp.com",
-  projectId: "eduvox-a5f31",
-  storageBucket: "eduvox-a5f31.firebasestorage.app",
-  messagingSenderId: "862244593088",
-  appId: "1:862244593088:web:c8f6e2c2b5c8e1c2f3e4d5"
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID
 };
+
+// Validate required environment variables
+const requiredEnvVars = ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_PROJECT_ID'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingVars.join(', '));
+  console.error('Please check your .env file and ensure all Firebase configuration variables are set.');
+  process.exit(1);
+}
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);

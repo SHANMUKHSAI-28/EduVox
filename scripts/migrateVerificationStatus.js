@@ -4,18 +4,32 @@
  * Run this once to migrate existing data
  */
 
+import dotenv from 'dotenv';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 
-// Firebase configuration - update with your config
+// Load environment variables
+dotenv.config();
+
+// Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCWTGUQYJe5uOy8yW8b9L9Z8fGJjEpNz9I",
-  authDomain: "eduvox-50e95.firebaseapp.com",
-  projectId: "eduvox-50e95",
-  storageBucket: "eduvox-50e95.firebasestorage.app",
-  messagingSenderId: "446436545232",
-  appId: "1:446436545232:web:5b8e5e8c8c8c8c8c8c8c8c"
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID
 };
+
+// Validate required environment variables
+const requiredEnvVars = ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_PROJECT_ID', 'VITE_FIREBASE_STORAGE_BUCKET', 'VITE_FIREBASE_MESSAGING_SENDER_ID', 'VITE_FIREBASE_APP_ID'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingVars.join(', '));
+  console.error('Please check your .env file and ensure all Firebase configuration variables are set.');
+  process.exit(1);
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
