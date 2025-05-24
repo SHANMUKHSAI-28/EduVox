@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Query parameter is required' });
   }
 
-  const API_KEY = process.env.VITE_GOOGLE_PLACES_API_KEY;
+  const API_KEY = process.env.VITE_GOOGLE_API_KEY;
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'Google Places API key not configured' });
