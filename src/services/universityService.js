@@ -39,12 +39,8 @@ export const universityService = {
         constraints.push(startAfter(lastDoc));
       }
       
-      q = query(q, ...constraints);
-        const snapshot = await getDocs(q);
+      q = query(q, ...constraints);      const snapshot = await getDocs(q);
       let universities = [];
-      
-      console.log(`Fetched ${snapshot.docs.length} universities from database`);
-      console.log(`Show unverified: ${showUnverified}, Filters:`, filters);
       
       snapshot.forEach((doc) => {
         const data = { id: doc.id, ...doc.data() };
@@ -78,13 +74,10 @@ export const universityService = {
         
         if (filters.tuitionMax !== undefined && data.tuition_min > filters.tuitionMax) {
           includeUniversity = false;
-        }
-          if (includeUniversity) {
+        }        if (includeUniversity) {
           universities.push(data);
         }
       });
-      
-      console.log(`After filtering: ${universities.length} universities included`);
       
       // Sort by ranking since we can't do it in the query
       universities.sort((a, b) => (a.ranking_overall || 999) - (b.ranking_overall || 999));

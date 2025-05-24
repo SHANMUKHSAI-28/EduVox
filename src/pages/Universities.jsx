@@ -62,10 +62,8 @@ const Universities = () => {
         // Get matched universities based on academic profile
         try {
           const matchedUniversities = await matchingService.getMatchedUniversities(academicProfile, {});
-          
-          // If no matches found, fallback to showing all verified universities
+            // If no matches found, fallback to showing all verified universities
           if (matchedUniversities.length === 0) {
-            console.log('No matched universities found, showing all verified universities');
             const fallbackResult = await universityService.getUniversities({ showUnverified: false }, 20, null, false);
             result = fallbackResult;
           } else {
@@ -74,9 +72,7 @@ const Universities = () => {
               hasMore: false,
               lastDoc: null
             };
-          }
-        } catch (error) {
-          console.error('Error getting matched universities, falling back to all:', error);
+          }        } catch (error) {
           // Fallback to showing all universities
           result = await universityService.getUniversities({ showUnverified: false }, 20, null, false);
         }

@@ -1,63 +1,307 @@
 // Enhanced University Scraper for Admin Panel
-// Supports adding new universities and updating existing ones
+// Supports adding new universities and updating existing ones with API-based discovery
 
 import axios from 'axios';
-import { collection, addDoc, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig.js';
 
 class EnhancedUniversityScraper {
   constructor() {
     this.apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    this.existingUniversities = [];
   }
 
-  // Additional universities to scrape beyond the original 36
-  getAdditionalUniversities() {
-    return [
-      // More US Universities
-      { name: "Cornell University", country: "US", city: "Ithaca", state: "New York" },
-      { name: "Carnegie Mellon University", country: "US", city: "Pittsburgh", state: "Pennsylvania" },
-      { name: "University of California, Berkeley", country: "US", city: "Berkeley", state: "California" },
-      { name: "University of California, Los Angeles", country: "US", city: "Los Angeles", state: "California" },
-      { name: "Johns Hopkins University", country: "US", city: "Baltimore", state: "Maryland" },
-      { name: "University of Michigan", country: "US", city: "Ann Arbor", state: "Michigan" },
-      { name: "New York University", country: "US", city: "New York", state: "New York" },
-      { name: "Duke University", country: "US", city: "Durham", state: "North Carolina" },
-      { name: "Brown University", country: "US", city: "Providence", state: "Rhode Island" },
-      { name: "Dartmouth College", country: "US", city: "Hanover", state: "New Hampshire" },
+  // Load existing universities from database to prevent duplicates
+  async loadExistingUniversities() {
+    try {
+      const snapshot = await getDocs(collection(db, 'universities'));
+      this.existingUniversities = [];
       
-      // More UK Universities
-      { name: "University of St Andrews", country: "UK", city: "St Andrews", state: "Scotland" },
-      { name: "University of Bath", country: "UK", city: "Bath", state: "England" },
-      { name: "University of Durham", country: "UK", city: "Durham", state: "England" },
-      { name: "University of Exeter", country: "UK", city: "Exeter", state: "England" },
-      { name: "University of York", country: "UK", city: "York", state: "England" },
-      { name: "University of Glasgow", country: "UK", city: "Glasgow", state: "Scotland" },
-      { name: "University of Southampton", country: "UK", city: "Southampton", state: "England" },
-      { name: "University of Birmingham", country: "UK", city: "Birmingham", state: "England" },
-      { name: "University of Sheffield", country: "UK", city: "Sheffield", state: "England" },
-      { name: "University of Nottingham", country: "UK", city: "Nottingham", state: "England" },
+      snapshot.forEach((doc) => {
+        this.existingUniversities.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
       
-      // More Canadian Universities
-      { name: "Simon Fraser University", country: "Canada", city: "Burnaby", state: "British Columbia" },
-      { name: "University of Ottawa", country: "Canada", city: "Ottawa", state: "Ontario" },
-      { name: "Western University", country: "Canada", city: "London", state: "Ontario" },
-      { name: "York University", country: "Canada", city: "Toronto", state: "Ontario" },
-      { name: "Concordia University", country: "Canada", city: "Montreal", state: "Quebec" },
-      { name: "University of Victoria", country: "Canada", city: "Victoria", state: "British Columbia" },
-      { name: "Carleton University", country: "Canada", city: "Ottawa", state: "Ontario" },
-      { name: "Dalhousie University", country: "Canada", city: "Halifax", state: "Nova Scotia" },
-      
-      // More Australian Universities
-      { name: "University of Technology Sydney", country: "Australia", city: "Sydney", state: "New South Wales" },
-      { name: "Macquarie University", country: "Australia", city: "Sydney", state: "New South Wales" },
-      { name: "Griffith University", country: "Australia", city: "Brisbane", state: "Queensland" },
-      { name: "Deakin University", country: "Australia", city: "Melbourne", state: "Victoria" },
-      { name: "Queensland University of Technology", country: "Australia", city: "Brisbane", state: "Queensland" },
-      { name: "University of Wollongong", country: "Australia", city: "Wollongong", state: "New South Wales" },
-      { name: "Curtin University", country: "Australia", city: "Perth", state: "Western Australia" },
-      { name: "University of Tasmania", country: "Australia", city: "Hobart", state: "Tasmania" }
-    ];
+      return this.existingUniversities;
+    } catch (error) {
+      console.error('Error loading existing universities:', error);
+      return [];
+    }
   }
+
+  // Check if university already exists in database
+  isDuplicateUniversity(universityName, city, country) {
+    const normalizedName = universityName.toLowerCase().trim();
+    const normalizedCity = city?.toLowerCase().trim() || '';
+    const normalizedCountry = country?.toLowerCase().trim() || '';
+    
+    return this.existingUniversities.some(existing => {
+      const existingName = existing.name?.toLowerCase().trim() || '';
+      const existingCity = existing.city?.toLowerCase().trim() || '';
+      const existingCountry = existing.country?.toLowerCase().trim() || '';
+      
+      // Check for exact name match
+      if (existingName === normalizedName) return true;
+      
+      // Check for similar names (considering common variations)
+      const similarity = this.calculateSimilarity(normalizedName, existingName);
+      if (similarity > 0.85 && existingCity === normalizedCity && existingCountry === normalizedCountry) {
+        return true;
+      }
+      
+      return false;
+    });
+  }
+
+  // Calculate string similarity (Levenshtein distance based)
+  calculateSimilarity(str1, str2) {
+    const matrix = [];
+    const len1 = str1.length;
+    const len2 = str2.length;
+
+    for (let i = 0; i <= len2; i++) {
+      matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= len1; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= len2; i++) {
+      for (let j = 1; j <= len1; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+
+    const maxLen = Math.max(len1, len2);
+    return maxLen === 0 ? 1 : (maxLen - matrix[len2][len1]) / maxLen;
+  }
+
+  // Find duplicates and merge/delete them
+  async findAndRemoveDuplicates(onProgress) {
+    await this.loadExistingUniversities();
+    
+    const duplicateGroups = [];
+    const processed = new Set();
+    
+    onProgress?.({ type: 'info', message: '🔍 Scanning for duplicate universities...' });
+    
+    for (let i = 0; i < this.existingUniversities.length; i++) {
+      if (processed.has(i)) continue;
+      
+      const university = this.existingUniversities[i];
+      const duplicates = [i];
+      
+      for (let j = i + 1; j < this.existingUniversities.length; j++) {
+        if (processed.has(j)) continue;
+        
+        const other = this.existingUniversities[j];
+        const similarity = this.calculateSimilarity(
+          university.name?.toLowerCase() || '', 
+          other.name?.toLowerCase() || ''
+        );
+        
+        if (similarity > 0.85 && 
+            university.city?.toLowerCase() === other.city?.toLowerCase() &&
+            university.country?.toLowerCase() === other.country?.toLowerCase()) {
+          duplicates.push(j);
+          processed.add(j);
+        }
+      }
+      
+      if (duplicates.length > 1) {
+        duplicateGroups.push(duplicates.map(idx => this.existingUniversities[idx]));
+      }
+      processed.add(i);
+    }
+    
+    let removedCount = 0;
+    
+    for (const group of duplicateGroups) {
+      // Keep the most complete record (with most data)
+      const bestRecord = group.reduce((best, current) => {
+        const bestScore = this.calculateCompletenessScore(best);
+        const currentScore = this.calculateCompletenessScore(current);
+        return currentScore > bestScore ? current : best;
+      });
+      
+      // Remove all others
+      for (const duplicate of group) {
+        if (duplicate.id !== bestRecord.id) {
+          try {
+            await deleteDoc(doc(db, 'universities', duplicate.id));
+            removedCount++;
+            onProgress?.({ 
+              type: 'warning', 
+              message: `🗑️ Removed duplicate: ${duplicate.name} (kept ${bestRecord.name})` 
+            });
+          } catch (error) {
+            onProgress?.({ 
+              type: 'error', 
+              message: `❌ Failed to remove duplicate ${duplicate.name}: ${error.message}` 
+            });
+          }
+        }
+      }
+    }
+    
+    onProgress?.({ 
+      type: 'success', 
+      message: `✅ Duplicate cleanup complete: ${removedCount} duplicates removed` 
+    });
+    
+    return { duplicateGroups: duplicateGroups.length, removedCount };
+  }
+
+  // Calculate completeness score for a university record
+  calculateCompletenessScore(university) {
+    let score = 0;
+    const fields = [
+      'name', 'city', 'country', 'website_url', 'description', 'programs_offered',
+      'tuition_min', 'tuition_max', 'rating', 'ranking_overall', 'acceptance_rate',
+      'student_population', 'photos'
+    ];
+    
+    fields.forEach(field => {
+      if (university[field] && university[field] !== null && university[field] !== '') {
+        if (Array.isArray(university[field]) && university[field].length > 0) score++;
+        else if (!Array.isArray(university[field])) score++;
+      }
+    });
+    
+    return score;
+  }
+  // Search for universities in a specific country using Google Places API
+  async searchUniversitiesInCountry(country, maxResults = 50, onProgress) {
+    try {
+      console.log(`🔍 DEBUG: searchUniversitiesInCountry called with country: ${country}, maxResults: ${maxResults}`);
+      onProgress?.({ type: 'info', message: `🌍 Searching for universities in ${country}...` });
+      
+      const countryQueries = {
+        'Germany': ['university Germany', 'universität Deutschland', 'hochschule Deutschland'],
+        'France': ['université France', 'university France', 'école France'],
+        'US': ['university United States', 'college USA', 'university America'],
+        'UK': ['university United Kingdom', 'university England', 'university Scotland'],
+        'Canada': ['university Canada', 'université Canada'],
+        'Australia': ['university Australia'],
+        'India': ['university India', 'college India'],
+        'China': ['university China', '大学 中国'],
+        'Japan': ['university Japan', '大学 日本']
+      };
+      
+      const queries = countryQueries[country] || [`university ${country}`];
+      console.log(`🔍 DEBUG: Using queries for ${country}:`, queries);
+      const foundUniversities = [];
+      const seenNames = new Set();
+      
+      for (const query of queries) {
+        console.log(`🔍 DEBUG: Processing query: "${query}"`);
+        if (foundUniversities.length >= maxResults) {
+          console.log(`🔍 DEBUG: Reached maxResults (${maxResults}), breaking from query loop`);
+          break;
+        }
+        
+        try {
+          onProgress?.({ type: 'info', message: `🔍 Searching with query: "${query}"` });
+          console.log(`🔍 DEBUG: Making API call to ${this.apiBaseUrl}/api/places/search`);
+          const response = await axios.post(`${this.apiBaseUrl}/api/places/search`, {
+            query,
+            type: 'university'
+          });
+          
+          console.log(`🔍 DEBUG: API response status: ${response.status}`);
+          console.log(`🔍 DEBUG: API response data:`, response.data);
+            if (response.data && response.data.places) {
+            console.log(`🔍 DEBUG: Found ${response.data.places.length} places in response`);
+            for (const place of response.data.places) {
+              if (foundUniversities.length >= maxResults) {
+                console.log(`🔍 DEBUG: Reached maxResults in place processing loop`);
+                break;
+              }
+              
+              const name = place.displayName?.text || place.name || 'Unknown University';
+              const normalizedName = name.toLowerCase().trim();
+              console.log(`🔍 DEBUG: Processing place: ${name}`);
+              
+              // Skip if we've already found this university
+              if (seenNames.has(normalizedName)) {
+                console.log(`🔍 DEBUG: Already seen ${name}, skipping`);
+                continue;
+              }
+              
+              // Skip if it doesn't look like a university
+              if (!this.isUniversityName(name)) {
+                console.log(`🔍 DEBUG: ${name} doesn't look like a university, skipping`);
+                continue;
+              }
+              
+              seenNames.add(normalizedName);
+              const universityEntry = {
+                name: name,
+                place_id: place.id,
+                formatted_address: place.formattedAddress,
+                rating: place.rating,
+                types: place.types || []
+              };
+              foundUniversities.push(universityEntry);
+              console.log(`🔍 DEBUG: Added to foundUniversities: ${name} (place_id: ${place.id})`);
+              
+              onProgress?.({ type: 'info', message: `📍 Found: ${name}` });
+            }
+          } else {
+            console.log(`🔍 DEBUG: No places data in response or response.data.places is empty`);
+          }
+            // Rate limiting
+          console.log(`🔍 DEBUG: Adding 1-second delay before next query...`);
+          await this.delay(1000);
+          
+        } catch (error) {
+          console.error(`🔍 DEBUG: Query "${query}" failed with error:`, error);
+          onProgress?.({ 
+            type: 'warning', 
+            message: `⚠️ Query "${query}" failed: ${error.message}` 
+          });
+        }
+      }
+      
+      console.log(`🔍 DEBUG: Search complete. Total found: ${foundUniversities.length} universities`);
+      onProgress?.({ 
+        type: 'success', 
+        message: `✅ Found ${foundUniversities.length} universities in ${country}` 
+      });
+      
+      return foundUniversities;
+        } catch (error) {
+      console.error(`🔍 DEBUG: searchUniversitiesInCountry failed with error:`, error);
+      onProgress?.({ 
+        type: 'error', 
+        message: `❌ Failed to search universities in ${country}: ${error.message}` 
+      });
+      return [];
+    }
+  }
+
+  // Check if a name looks like a university
+  isUniversityName(name) {
+    const universityKeywords = [
+      'university', 'college', 'institute', 'school',
+      'universität', 'université', 'universidad', 'università',
+      'hochschule', 'fachhochschule', 'école', 'institut',
+      '大学', 'विश्वविद्यालय'
+    ];
+    
+    const lowerName = name.toLowerCase();
+    return universityKeywords.some(keyword => lowerName.includes(keyword));  }
 
   // Get university details using Google Places API v1 via proxy
   async getUniversityDetails(universityName, city, country) {
@@ -227,45 +471,115 @@ class EnhancedUniversityScraper {
 
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  // Scrape additional universities and add to Firestore
-  async scrapeAndAddNewUniversities(onProgress) {
-    const additionalUniversities = this.getAdditionalUniversities();
+  }  // Scrape universities from a specific country using API search
+  async scrapeUniversitiesByCountry(country, maxResults = 10, onProgress) {
+    console.log(`🔍 DEBUG: Starting scrapeUniversitiesByCountry for ${country}, maxResults: ${maxResults}`);
+    
+    await this.loadExistingUniversities();
+    console.log(`🔍 DEBUG: Loaded ${this.existingUniversities.length} existing universities`);
+    
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
     
-    onProgress?.({ type: 'info', message: `🚀 Starting to scrape ${additionalUniversities.length} new universities...` });
+    onProgress?.({ 
+      type: 'info', 
+      message: `🚀 Starting intelligent scraping for ${country} (max ${maxResults} universities)...` 
+    });
     
-    for (let i = 0; i < additionalUniversities.length; i++) {
-      const university = additionalUniversities[i];
-      const ranking = 37 + i; // Start from 37 since we already have 36
-      
-      try {
+    // First, find and remove any existing duplicates
+    console.log(`🔍 DEBUG: Starting duplicate removal...`);
+    await this.findAndRemoveDuplicates(onProgress);
+    
+    // Reload existing universities after duplicate cleanup
+    await this.loadExistingUniversities();
+    console.log(`🔍 DEBUG: After duplicate cleanup, have ${this.existingUniversities.length} universities`);
+    
+    // Search for universities in the specified country
+    console.log(`🔍 DEBUG: Starting university search for ${country}...`);
+    const foundUniversities = await this.searchUniversitiesInCountry(country, maxResults * 3, onProgress);
+    console.log(`🔍 DEBUG: Found ${foundUniversities.length} universities from API`);
+      if (foundUniversities.length === 0) {
+      console.log(`🔍 DEBUG: No universities found for ${country}`);
+      onProgress?.({ 
+        type: 'warning', 
+        message: `⚠️ No universities found in ${country}` 
+      });
+      return { successCount: 0, errorCount: 0, skippedCount: 0, total: 0 };
+    }
+    
+    console.log(`🔍 DEBUG: Starting to process ${foundUniversities.length} found universities`);
+    let processedCount = 0;
+    
+    for (const university of foundUniversities) {
+      console.log(`🔍 DEBUG: Processing university ${processedCount + 1}/${foundUniversities.length}: ${university.name}`);
+      if (successCount >= maxResults) {
+        console.log(`🔍 DEBUG: Reached maxResults limit (${maxResults}), stopping`);
+        break;
+      }
+        try {
+        processedCount++;
+        console.log(`🔍 DEBUG: Processing university ${processedCount}: ${university.name}`);
         onProgress?.({ 
           type: 'info', 
-          message: `📍 Processing ${i + 1}/${additionalUniversities.length}: ${university.name}` 
+          message: `📍 Processing ${processedCount}/${foundUniversities.length}: ${university.name}` 
         });
         
-        // Get Google Places data
-        const details = await this.getUniversityDetails(
-          university.name, 
-          university.city, 
-          university.country
-        );
+        // Extract city and country from address
+        console.log(`🔍 DEBUG: Extracting location from: ${university.formatted_address}`);
+        const locationInfo = this.extractLocationInfo(university.formatted_address, country);
+        console.log(`🔍 DEBUG: Extracted location:`, locationInfo);
+        
+        // Check if university already exists
+        console.log(`🔍 DEBUG: Checking for duplicates: ${university.name}, ${locationInfo.city}, ${country}`);
+        if (this.isDuplicateUniversity(university.name, locationInfo.city, country)) {
+          console.log(`🔍 DEBUG: Found duplicate, skipping: ${university.name}`);
+          skippedCount++;
+          onProgress?.({ 
+            type: 'warning', 
+            message: `⏭️ Skipped duplicate: ${university.name}` 
+          });
+          continue;
+        }
+        
+        console.log(`🔍 DEBUG: Getting detailed info for place_id: ${university.place_id}`);
+        // Get detailed information
+        const details = await this.getUniversityDetailsByPlaceId(university.place_id);
+        console.log(`🔍 DEBUG: Got details:`, details ? 'Yes' : 'No');
+          // Generate ranking (based on order found + rating)
+        const ranking = processedCount + Math.floor((5 - (university.rating || 3)) * 10);
+        console.log(`🔍 DEBUG: Generated ranking: ${ranking}`);
         
         // Generate complete university data
-        const universityData = this.generateUniversityData(university, ranking, details);
+        console.log(`🔍 DEBUG: Generating university data...`);
+        const universityData = this.generateUniversityData({
+          name: university.name,
+          city: locationInfo.city,
+          country: country,
+          state: locationInfo.state
+        }, ranking, details);
+        console.log(`🔍 DEBUG: Generated university data for: ${universityData.name}`);
         
         // Add to Firestore
+        console.log(`🔍 DEBUG: Adding to Firestore...`);
         const firestoreData = {
           ...universityData,
+          place_id: university.place_id,
+          discovered_via_api: true,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp()
         };
         
+        console.log(`🔍 DEBUG: Firestore data prepared, calling addDoc...`);
         const docRef = await addDoc(collection(db, 'universities'), firestoreData);
+        console.log(`🔍 DEBUG: Successfully added to Firestore with ID: ${docRef.id}`);
         successCount++;
+        
+        // Update our local cache
+        this.existingUniversities.push({
+          id: docRef.id,
+          ...universityData
+        });
         
         onProgress?.({ 
           type: 'success', 
@@ -273,9 +587,10 @@ class EnhancedUniversityScraper {
         });
         
         // Rate limiting
-        await this.delay(1000);
-        
-      } catch (error) {
+        console.log(`🔍 DEBUG: Adding delay before next university...`);
+        await this.delay(2000);
+          } catch (error) {
+        console.error(`🔍 DEBUG: Error processing ${university.name}:`, error);
         errorCount++;
         onProgress?.({ 
           type: 'error', 
@@ -284,7 +599,133 @@ class EnhancedUniversityScraper {
       }
     }
     
-    return { successCount, errorCount, total: additionalUniversities.length };
+    console.log(`🔍 DEBUG: Processing complete. Success: ${successCount}, Skipped: ${skippedCount}, Errors: ${errorCount}`);
+    onProgress?.({ 
+      type: 'success', 
+      message: `🎉 Scraping complete: ${successCount} added, ${skippedCount} skipped (duplicates), ${errorCount} failed` 
+    });
+    
+    return { successCount, errorCount, skippedCount, total: foundUniversities.length };
+  }
+  // Main method for API-based university scraping by country
+  async scrapeAndAddNewUniversities(onProgress, country = null, numberOfUniversities = 10) {
+    try {
+      onProgress?.({ 
+        type: 'info', 
+        message: '🚀 Starting API-based university discovery...' 
+      });
+
+      // Load existing universities to prevent duplicates
+      await this.loadExistingUniversities();
+      
+      if (!country) {
+        onProgress?.({ 
+          type: 'error', 
+          message: '❌ No country specified for university discovery' 
+        });
+        return { successCount: 0, errorCount: 1, skippedCount: 0 };
+      }
+      
+      onProgress?.({ 
+        type: 'info', 
+        message: `🌍 Discovering ${numberOfUniversities} universities in ${country} using Google Places API...` 
+      });
+      
+      // Use API-based discovery for the specified country
+      const results = await this.scrapeUniversitiesByCountry(
+        country, 
+        numberOfUniversities,
+        onProgress
+      );
+      
+      onProgress?.({ 
+        type: 'success', 
+        message: `🎉 Discovery complete! Added: ${results.successCount}, Skipped: ${results.skippedCount}, Errors: ${results.errorCount}` 
+      });
+      
+      return results;
+      
+    } catch (error) {
+      console.error('Error in API-based university discovery:', error);
+      onProgress?.({ 
+        type: 'error', 
+        message: `❌ University discovery failed: ${error.message}` 
+      });
+      throw error;
+    }
+  }
+
+  // Extract city and state from formatted address
+  extractLocationInfo(formattedAddress, country) {
+    if (!formattedAddress) return { city: '', state: '' };
+    
+    const parts = formattedAddress.split(',').map(part => part.trim());
+    
+    // Country-specific parsing
+    switch (country) {
+      case 'Germany':
+        // Format: "Street, PLZ City, Germany"
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part = parts[i];
+          if (/^\d{5}\s+/.test(part)) { // German postal code pattern
+            return {
+              city: part.replace(/^\d{5}\s+/, ''),
+              state: parts[i + 1] === 'Germany' ? (parts[i - 1] || '') : (parts[i + 1] || '')
+            };
+          }
+        }
+        break;
+        
+      case 'France':
+        // Format: "Street, PLZ City, France"
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part = parts[i];
+          if (/^\d{5}\s+/.test(part)) { // French postal code pattern
+            return {
+              city: part.replace(/^\d{5}\s+/, ''),
+              state: parts[i + 1] === 'France' ? (parts[i - 1] || '') : (parts[i + 1] || '')
+            };
+          }
+        }
+        break;
+        
+      default:
+        // Generic parsing
+        if (parts.length >= 2) {
+          return {
+            city: parts[parts.length - 3] || parts[parts.length - 2] || '',
+            state: parts[parts.length - 2] || ''
+          };
+        }
+    }
+    
+    return { city: parts[0] || '', state: parts[1] || '' };
+  }
+  // Get detailed university information by place ID
+  async getUniversityDetailsByPlaceId(placeId) {
+    try {
+      const response = await axios.get(`${this.apiBaseUrl}/api/places/details/${placeId}`);
+      
+      if (response.data) {
+        // Handle both new API v1 format and legacy format
+        const details = response.data;
+        return {
+          website_url: details.websiteUri || details.website_url || null,
+          formatted_address: details.formattedAddress || details.formatted_address || null,
+          phone_number: details.phoneNumber || details.phone_number || null,
+          rating: details.rating || null,
+          photos: details.photos ? details.photos.slice(0, 3).map(photo => 
+            photo.name || `${this.apiBaseUrl}/api/places/photo?photo_reference=${photo.photo_reference}&maxwidth=400`
+          ) : [],
+          reviews_count: details.reviews_count || (details.reviews ? details.reviews.length : 0),
+          opening_hours: details.opening_hours || null
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error fetching details for place ID ${placeId}:`, error.message);
+      return null;
+    }
   }
 
   // Update existing universities with fresh data

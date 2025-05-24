@@ -14,6 +14,15 @@ const ManageUniversities = () => {
   const [universities, setUniversities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Admin-specific filters
+  const [filters, setFilters] = useState({
+    verificationStatus: '',
+    country: '',
+    ratingFilter: '',
+    sortBy: 'name'
+  });
+  
   const [progress, setProgress] = useState(null);
   const [selectedUniversity, setSelectedUniversity] = useState(null);
   const [editModal, setEditModal] = useState(false);
@@ -41,6 +50,30 @@ const ManageUniversities = () => {
     { value: 'Japan', label: 'Japan' }
   ];
 
+  // Admin filter options
+  const verificationStatusOptions = [
+    { value: '', label: 'All Status' },
+    { value: 'verified', label: 'Verified' },
+    { value: 'pending', label: 'Pending Verification' }
+  ];
+
+  const ratingFilterOptions = [
+    { value: '', label: 'All Ratings' },
+    { value: 'hasRating', label: 'Has Rating' },
+    { value: 'noRating', label: 'No Rating' },
+    { value: 'highRating', label: 'Rating ≥ 4.0' },
+    { value: 'lowRating', label: 'Rating < 3.0' }
+  ];
+
+  const sortByOptions = [
+    { value: 'name', label: 'Name (A-Z)' },
+    { value: 'nameDesc', label: 'Name (Z-A)' },
+    { value: 'country', label: 'Country' },
+    { value: 'rating', label: 'Rating (High to Low)' },
+    { value: 'verifiedAt', label: 'Recently Verified' },
+    { value: 'createdAt', label: 'Recently Added' }
+  ];
+
   useEffect(() => {
     fetchUniversities();
   }, []);
@@ -65,45 +98,33 @@ const ManageUniversities = () => {
     }
     setLoading(false);
   };
-
   const handleScrapUniversities = async () => {
     setLoading(true);
     try {
-      let universitiesToScrape = [];
-      
-      if (scrapingOptions.customUniversities) {
-        // Parse custom universities list
-        const customList = scrapingOptions.customUniversities
-          .split('\n')
-          .filter(line => line.trim())
-          .map(line => {
-            const parts = line.split(',').map(p => p.trim());
-            return {
-              name: parts[0],
-              city: parts[1] || '',
-              country: parts[2] || scrapingOptions.country || 'US'
-            };
-          });
-        universitiesToScrape = customList;
-      } else {
-        // Get predefined universities based on country and count
-        const allUniversities = scraper.getAdditionalUniversities();
-        universitiesToScrape = scrapingOptions.country 
-          ? allUniversities.filter(uni => uni.country === scrapingOptions.country)
-          : allUniversities;
-        
-        universitiesToScrape = universitiesToScrape.slice(0, scrapingOptions.numberOfUniversities);
+      // Validate that country is selected
+      if (!scrapingOptions.country) {
+        showAlert('error', 'Please select a country for university discovery');
+        setLoading(false);
+        return;
       }
 
-      await scraper.scrapeUniversities(universitiesToScrape, (progress) => {
-        setProgress(progress);
-      });
+      console.log(`🚀 Starting API-based discovery for ${scrapingOptions.country}`);
+      console.log(`📊 Target: ${scrapingOptions.numberOfUniversities} universities`);
+
+      // Use pure API-based discovery
+      const results = await scraper.scrapeAndAddNewUniversities(
+        (progress) => {
+          setProgress(progress);
+        }, 
+        scrapingOptions.country, 
+        scrapingOptions.numberOfUniversities
+      );
       
       await fetchUniversities();
-      showAlert('success', `Successfully scraped ${universitiesToScrape.length} universities`);
+      showAlert('success', `Discovery complete! Added: ${results.successCount}, Skipped: ${results.skippedCount} duplicates`);
     } catch (error) {
-      console.error('Error scraping universities:', error);
-      showAlert('error', 'Failed to scrape universities');
+      console.error('Error in university discovery:', error);
+      showAlert('error', 'Failed to discover universities via API');
     }
     setLoading(false);
     setProgress(null);
@@ -170,11 +191,48 @@ const ManageUniversities = () => {
     }
   };
 
-  const filteredUniversities = universities.filter(uni =>
-    uni.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    uni.country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    uni.city?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUniversities = universities.filter(uni => {
+    const matchesSearchTerm = 
+      uni.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      uni.country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      uni.city?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesVerificationStatus = 
+      !filters.verificationStatus || 
+      (filters.verificationStatus === 'verified' && uni.isVerified) ||
+      (filters.verificationStatus === 'pending' && !uni.isVerified);
+    
+    const matchesCountry = 
+      !filters.country || uni.country === filters.country;
+    
+    const matchesRating = () => {
+      if (!filters.ratingFilter) return true;
+      if (filters.ratingFilter === 'hasRating') return uni.rating != null;
+      if (filters.ratingFilter === 'noRating') return uni.rating == null;
+      if (filters.ratingFilter === 'highRating') return uni.rating >= 4.0;
+      if (filters.ratingFilter === 'lowRating') return uni.rating < 3.0;
+      return true;
+    };
+    
+    return matchesSearchTerm && matchesVerificationStatus && matchesCountry && matchesRating();
+  });
+
+  const sortedUniversities = filteredUniversities.sort((a, b) => {
+    if (filters.sortBy === 'name') {
+      return a.name.localeCompare(b.name);
+    } else if (filters.sortBy === 'nameDesc') {
+      return b.name.localeCompare(a.name);
+    } else if (filters.sortBy === 'country') {
+      return a.country.localeCompare(b.country);
+    } else if (filters.sortBy === 'rating') {
+      return (b.rating || 0) - (a.rating || 0);
+    } else if (filters.sortBy === 'verifiedAt') {
+      return (b.verifiedAt ? new Date(b.verifiedAt) : 0) - (a.verifiedAt ? new Date(a.verifiedAt) : 0);
+    } else if (filters.sortBy === 'createdAt') {
+      return (b.createdAt ? new Date(b.createdAt) : 0) - (a.createdAt ? new Date(a.createdAt) : 0);
+    }
+    return 0;
+  });
 
   const renderScrapingTab = () => (
     <div className="space-y-6">
@@ -243,9 +301,7 @@ const ManageUniversities = () => {
             {loading ? 'Updating...' : 'Update Existing Universities'}
           </Button>
         </div>
-      </div>
-
-      {progress && (
+      </div>      {progress && (
         <div className="bg-gray-50 p-4 rounded-lg">
           <h4 className="font-medium mb-2">Progress</h4>
           <div className="space-y-2">
@@ -257,22 +313,206 @@ const ManageUniversities = () => {
             }`}>
               {progress.message}
             </div>
+          </div>        </div>
+      )}
+
+      {/* Web Scraping Status */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h3 className="text-lg font-semibold mb-4">Web Scraping Status</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-medium text-blue-800">Total Universities</h4>
+                <p className="text-2xl font-bold text-blue-900">{universities.length}</p>
+              </div>
+              <div className="text-blue-600">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-medium text-green-800">Verified</h4>
+                <p className="text-2xl font-bold text-green-900">{universities.filter(u => u.isVerified).length}</p>
+              </div>
+              <div className="text-green-600">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-medium text-yellow-800">Pending Review</h4>
+                <p className="text-2xl font-bold text-yellow-900">{universities.filter(u => !u.isVerified).length}</p>
+              </div>
+              <div className="text-yellow-600">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <h4 className="font-medium text-purple-800 mb-2">Recent Scraping Activity</h4>
+            <div className="space-y-2 text-sm text-purple-700">
+              <div className="flex justify-between">
+                <span>Last Scraping Session:</span>
+                <span className="font-medium">
+                  {universities.length > 0 ? 
+                    new Date(universities[0]?.created_at?.toDate?.() || universities[0]?.created_at || Date.now()).toLocaleDateString() :
+                    'No data'
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Status:</span>
+                <span className={`font-medium ${loading ? 'text-blue-600' : 'text-green-600'}`}>
+                  {loading ? 'In Progress' : 'Ready'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+            <h4 className="font-medium text-indigo-800 mb-2">Data Sources</h4>
+            <div className="space-y-1 text-sm text-indigo-700">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Google Places API</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>University Rankings</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Academic Database</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {loading && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <span className="text-blue-800 font-medium">Web scraping in progress...</span>
+            </div>
+            <div className="mt-2 text-sm text-blue-600">
+              This process may take several minutes depending on the number of universities being processed.
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 
   const renderUniversitiesTab = () => (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <h3 className="text-lg font-semibold">Universities Management</h3>
-        <FormInput
-          placeholder="Search universities..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full sm:w-64"
-        />
+        
+        {/* Statistics */}
+        <div className="flex gap-4 text-sm">
+          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full">
+            Total: {universities.length}
+          </span>
+          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full">
+            Verified: {universities.filter(u => u.isVerified).length}
+          </span>
+          <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+            Pending: {universities.filter(u => !u.isVerified).length}
+          </span>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="flex flex-col lg:flex-row gap-4 items-end">
+          {/* Search Bar */}
+          <div className="flex-1 lg:max-w-md">
+            <FormInput
+              placeholder="Search universities..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3">
+            <FormSelect
+              label="Verification Status"
+              value={filters.verificationStatus}
+              onChange={(e) => setFilters(prev => ({ ...prev, verificationStatus: e.target.value }))}
+              options={verificationStatusOptions}
+              className="w-40"
+            />
+            
+            <FormSelect
+              label="Country"
+              value={filters.country}
+              onChange={(e) => setFilters(prev => ({ ...prev, country: e.target.value }))}
+              options={countries}
+              className="w-40"
+            />
+            
+            <FormSelect
+              label="Rating Filter"
+              value={filters.ratingFilter}
+              onChange={(e) => setFilters(prev => ({ ...prev, ratingFilter: e.target.value }))}
+              options={ratingFilterOptions}
+              className="w-40"
+            />
+            
+            <FormSelect
+              label="Sort By"
+              value={filters.sortBy}
+              onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+              options={sortByOptions}
+              className="w-48"
+            />
+          </div>
+
+          {/* Clear Filters Button */}
+          <Button
+            onClick={() => {
+              setFilters({
+                verificationStatus: '',
+                country: '',
+                ratingFilter: '',
+                sortBy: 'name'
+              });
+              setSearchTerm('');
+            }}
+            variant="outline"
+            size="sm"
+            className="whitespace-nowrap"
+          >
+            Clear All
+          </Button>
+        </div>
+          {/* Results Summary */}
+        <div className="mt-3 pt-3 border-t text-sm text-gray-600">
+          Showing {sortedUniversities.length} of {universities.length} universities
+          {(searchTerm || filters.verificationStatus || filters.country || filters.ratingFilter) && (
+            <span className="ml-2 text-blue-600">(filtered)</span>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -298,7 +538,7 @@ const ManageUniversities = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUniversities.map((university) => (
+              {sortedUniversities.map((university) => (
                 <tr key={university.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -359,7 +599,7 @@ const ManageUniversities = () => {
           </table>
         </div>
         
-        {filteredUniversities.length === 0 && !loading && (
+        {sortedUniversities.length === 0 && !loading && (
           <div className="text-center py-8 text-gray-500">
             No universities found matching your search.
           </div>
