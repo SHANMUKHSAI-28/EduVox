@@ -1,16 +1,105 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/common/Sidebar';
 import AdBanner from '../components/ads/AdBanner';
+import { academicProfileService, savedUniversitiesService } from '../services/universityService';
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { userData } = useAuth();
+  const [profileCompletion, setProfileCompletion] = useState(0);
+  const [savedUniversitiesCount, setSavedUniversitiesCount] = useState(0);
+  const { userData, currentUser } = useAuth();
+
+  useEffect(() => {
+    if (currentUser) {
+      calculateProfileCompletion();
+      loadSavedUniversitiesCount();
+    }
+  }, [currentUser]);
+
+  const calculateProfileCompletion = async () => {
+    if (!currentUser) return;
+
+    try {
+      const profile = await academicProfileService.getAcademicProfile(currentUser.uid);
+      
+      if (!profile) {
+        setProfileCompletion(10); // Basic account creation
+        return;
+      }
+
+      // Define required fields for a complete profile
+      const requiredFields = [
+        'full_name',
+        'nationality', 
+        'education_level',
+        'cgpa',
+        'preferred_countries',
+        'preferred_fields_of_study',
+        'target_intake',
+        'target_year'
+      ];
+
+      const optionalButImportantFields = [
+        'ielts_score',
+        'toefl_score', 
+        'gre_score',
+        'budget_min',
+        'budget_max'
+      ];
+
+      let completedRequired = 0;
+      let completedOptional = 0;
+
+      // Check required fields
+      requiredFields.forEach(field => {
+        const value = profile[field];
+        if (value && value !== '' && (Array.isArray(value) ? value.length > 0 : true)) {
+          completedRequired++;
+        }
+      });
+
+      // Check optional fields
+      optionalButImportantFields.forEach(field => {
+        const value = profile[field];
+        if (value && value !== '' && (Array.isArray(value) ? value.length > 0 : true)) {
+          completedOptional++;
+        }
+      });
+
+      // Calculate percentage: Required fields are worth 70%, optional 30%
+      const requiredPercentage = (completedRequired / requiredFields.length) * 70;
+      const optionalPercentage = (completedOptional / optionalButImportantFields.length) * 30;
+      
+      const totalCompletion = Math.min(100, Math.round(requiredPercentage + optionalPercentage + 10)); // +10 for basic account
+      setProfileCompletion(totalCompletion);
+    } catch (error) {
+      console.error('Error calculating profile completion:', error);
+      setProfileCompletion(10); // Fallback to basic completion
+    }
+  };
+
+  const loadSavedUniversitiesCount = async () => {
+    if (!currentUser) return;
+
+    try {
+      const savedUniversities = await savedUniversitiesService.getSavedUniversities(currentUser.uid);
+      setSavedUniversitiesCount(savedUniversities.length);
+    } catch (error) {
+      console.error('Error loading saved universities count:', error);
+    }
+  };
+
+  const getProfileCompletionColor = () => {
+    if (profileCompletion >= 80) return 'bg-green-500';
+    if (profileCompletion >= 50) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
 
   const stats = [
     {
       name: 'Universities Shortlisted',
-      value: '0',
+      value: savedUniversitiesCount.toString(),
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -30,13 +119,13 @@ const Dashboard = () => {
     },
     {
       name: 'Profile Completion',
-      value: '20%',
+      value: `${profileCompletion}%`,
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       ),
-      color: 'bg-yellow-500'
+      color: getProfileCompletionColor()
     },
     {
       name: 'Consultant Sessions',
@@ -49,12 +138,11 @@ const Dashboard = () => {
       color: 'bg-purple-500'
     }
   ];
-
   const quickActions = [
     {
       name: 'Complete Profile',
       description: 'Add your academic details and preferences',
-      href: '/profile',
+      href: '/profile#academic',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -73,7 +161,7 @@ const Dashboard = () => {
       ),
       color: 'bg-green-500'
     }
-  ];  return (
+  ];return (
     <div className="flex min-h-screen bg-gradient-to-br from-primary-50/30 via-white to-accent-50/30">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       

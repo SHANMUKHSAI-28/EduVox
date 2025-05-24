@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/common/Sidebar';
-import AcademicProfileForm from '../components/university/AcademicProfileForm';
 import UniversityCard from '../components/university/UniversityCard';
 import UniversityFilters from '../components/university/UniversityFilters';
 import UniversityComparison from '../components/university/UniversityComparisonEnhanced';
@@ -21,7 +20,7 @@ import { exportUniversitiesPDF } from '../utils/pdfExport';
 const Universities = () => {
   const { currentUser } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('discover'); // discover, saved, profile
+  const [activeTab, setActiveTab] = useState('discover'); // discover, saved
   const [academicProfile, setAcademicProfile] = useState(null);
   const [universities, setUniversities] = useState([]);
   const [savedUniversities, setSavedUniversities] = useState([]);
@@ -180,7 +179,6 @@ const Universities = () => {
       loadUniversities(true);
     }
   };
-
   const tabs = [
     { 
       id: 'discover', 
@@ -199,15 +197,6 @@ const Universities = () => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
       )
-    },
-    { 
-      id: 'profile', 
-      name: 'Academic Profile', 
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      )
     }
   ];
 
@@ -215,10 +204,9 @@ const Universities = () => {
     <div className="flex h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <div className="flex-1 flex flex-col overflow-hidden lg:pl-64">
-        {/* Header */}
+      <div className="flex-1 flex flex-col overflow-hidden">        {/* Header */}
         <div className="bg-white/80 backdrop-blur-xl shadow-lg border-b border-white/20">
-          <div className="px-4 sm:px-6 lg:px-8">
+          <div className="px-3 sm:px-4 lg:px-6">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center">
                 <button
@@ -250,11 +238,9 @@ const Universities = () => {
               )}
             </div>
           </div>
-        </div>
-
-        {/* Tabs */}
+        </div>        {/* Tabs */}
         <div className="bg-white/60 backdrop-blur-sm border-b border-white/20">
-          <div className="px-4 sm:px-6 lg:px-8">
+          <div className="px-3 sm:px-4 lg:px-6">
             <nav className="flex space-x-8">
               {tabs.map((tab) => (
                 <button
@@ -272,23 +258,15 @@ const Universities = () => {
               ))}
             </nav>
           </div>
-        </div>
-
-        {/* Alert */}
+        </div>        {/* Alert */}
         {alert && (
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
+          <div className="px-3 sm:px-4 lg:px-6 py-4">
             <Alert type={alert.type} message={alert.message} onClose={() => setAlert(null)} />
           </div>
-        )}
-
-        {/* Content */}
+        )}        {/* Content */}
         <main className="flex-1 overflow-y-auto">
           <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {activeTab === 'profile' && (
-                <AcademicProfileForm onSave={handleProfileSave} />
-              )}
-
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
               {activeTab === 'discover' && (
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                   {/* Filters Sidebar */}
@@ -314,11 +292,10 @@ const Universities = () => {
                           <div className="flex-1">
                             <h3 className="font-semibold text-primary-900">Complete Your Academic Profile</h3>
                             <p className="text-primary-700 text-sm">Get personalized university recommendations by completing your academic profile.</p>
-                          </div>
-                          <Button
+                          </div>                          <Button
                             variant="primary"
                             size="sm"
-                            onClick={() => setActiveTab('profile')}
+                            onClick={() => window.location.href = '/profile'}
                           >
                             Complete Profile
                           </Button>
