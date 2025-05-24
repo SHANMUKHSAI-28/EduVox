@@ -107,7 +107,7 @@ const Login = () => {
               Sign in to continue your learning journey
             </p>
             <p className="mt-2 text-sm text-secondary-500">
-              New to EduVox?{' '}
+              New to UniGuidePro?{' '}
               <Link to="/signup" className="font-semibold text-primary-600 hover:text-primary-700 transition-colors">
                 Create an account
               </Link>

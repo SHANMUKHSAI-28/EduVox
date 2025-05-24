@@ -12,7 +12,7 @@ const LandingPage = () => {
               <div className="sm:text-center lg:text-left animate-fade-in">
                 <h1 className="text-4xl tracking-tight font-extrabold text-secondary-900 sm:text-5xl md:text-6xl">
                   <span className="block xl:inline">Welcome to</span>{' '}
-                  <span className="block text-gradient-primary xl:inline text-shadow">EduVox</span>
+                  <span className="block text-gradient-primary xl:inline text-shadow">UniGuidePro</span>
                 </h1>
                 <p className="mt-3 text-base text-secondary-600 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
                   Your comprehensive platform for educational guidance, university shortlisting, and academic planning. 
@@ -126,7 +126,7 @@ const LandingPage = () => {
         <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
             <span className="block">Ready to start your journey?</span>
-            <span className="block text-primary-200">Join EduVox today.</span>
+            <span className="block text-primary-200">Join UniGuidePro today.</span>
           </h2>
           <p className="mt-4 text-lg leading-6 text-primary-100">
             Take the first step towards achieving your educational goals with personalized guidance and comprehensive planning tools.

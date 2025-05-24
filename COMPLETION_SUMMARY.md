@@ -1,4 +1,4 @@
-# 🎉 EduVox University Shortlisting - COMPLETION SUMMARY
+# 🎉 UniGuidePro University Shortlisting - COMPLETION SUMMARY
 
 ## ✅ FULLY IMPLEMENTED FEATURES
 

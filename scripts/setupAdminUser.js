@@ -1,6 +1,6 @@
 /**
  * Admin User Setup Script
- * This script helps create admin users for the EduVox system
+ * This script helps create admin users for the UniGuidePro system
  */
 
 import { initializeApp } from 'firebase/app';

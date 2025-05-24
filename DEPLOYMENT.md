@@ -1,6 +1,6 @@
-# EduVox Deployment Guide
+# UniGuidePro Deployment Guide
 
-This guide will help you deploy EduVox to Firebase Hosting and configure Firestore security rules.
+This guide will help you deploy UniGuidePro to Firebase Hosting and configure Firestore security rules.
 
 ## Prerequisites
 

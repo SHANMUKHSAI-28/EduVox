@@ -317,7 +317,7 @@ async function main() {
   try {
     const scraper = new UniversityScraper();
     
-    console.log('🎓 EduVox University Data Scraper');
+    console.log('🎓 UniGuidePro University Data Scraper');
     console.log('==================================');
     
     await scraper.scrapeUniversities();

@@ -1,4 +1,4 @@
-# EduVox University Shortlisting - Testing Checklist
+# UniGuidePro University Shortlisting - Testing Checklist
 
 ## ✅ COMPLETED TASKS
 
@@ -177,4 +177,4 @@ firebase deploy --only hosting
 **Testing Status**: 🟢 READY FOR USER ACCEPTANCE TESTING
 **Deployment Status**: 🟢 READY FOR PRODUCTION DEPLOYMENT
 
-The EduVox University Shortlisting module is fully implemented and ready for production use.
+The UniGuidePro University Shortlisting module is fully implemented and ready for production use.

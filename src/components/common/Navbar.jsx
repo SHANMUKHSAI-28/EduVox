@@ -22,7 +22,7 @@ const Navbar = () => {
             <Link to="/" className="flex items-center group">
               <div className="flex-shrink-0">
                 <h1 className="text-2xl font-bold text-gradient-primary group-hover:scale-105 transition-transform duration-200">
-                  EduVox
+                  UniGuidePro
                 </h1>
               </div>
             </Link>

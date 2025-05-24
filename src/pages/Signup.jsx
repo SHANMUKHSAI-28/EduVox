@@ -115,7 +115,7 @@ const Signup = () => {
             </div>
             
             <h2 className="text-3xl font-bold bg-gradient-to-r from-accent-600 to-primary-600 bg-clip-text text-transparent">
-              Join EduVox
+              Join UniGuidePro
             </h2>
             <p className="mt-3 text-secondary-600">
               Start your educational journey today

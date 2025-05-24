@@ -1,4 +1,4 @@
-# EduVox - University Shortlisting Module
+# UniGuidePro - University Shortlisting Module
 
 ## ✅ Completed Features
 
@@ -34,7 +34,7 @@
 
 ### 1. Start the Application
 ```bash
-cd "C:\Users\SHANMUKHSAI\Desktop\EduVox"
+cd "C:\Users\SHANMUKHSAI\Desktop\UniGuidePro"
 npm run dev
 ```
 Access: http://localhost:5175/

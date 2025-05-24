@@ -1,6 +1,6 @@
-# EduVox - Educational Platform
+# UniGuidePro - Educational Platform
 
-EduVox is a comprehensive educational platform built with React, Tailwind CSS, and Firebase. It provides features for university shortlisting, educational guidance, and student management.
+UniGuidePro is a comprehensive educational platform built with React, Tailwind CSS, and Firebase. It provides features for university shortlisting, educational guidance, and student management.
 
 ## Features
 
@@ -32,7 +32,7 @@ EduVox is a comprehensive educational platform built with React, Tailwind CSS, a
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd EduVox
+   cd UniGuidePro
    ```
 
 2. **Install dependencies**
@@ -148,4 +148,4 @@ This project is licensed under the MIT License.
 
 ## Support
 
-For support, email support@eduvox.com or create an issue in the repository.
+For support, email support@uniguidepro.com or create an issue in the repository.
