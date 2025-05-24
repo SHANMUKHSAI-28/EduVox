@@ -38,13 +38,22 @@ const Navbar = () => {
                 >
                   Dashboard
                 </Link>
-                
-                <Link 
+                  <Link 
                   to="/universities" 
                   className="text-secondary-700 hover:text-primary-600 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-primary-50"
                 >
                   Universities
                 </Link>
+                
+                {/* Admin Link - Only show for admin users */}
+                {userData?.role === 'admin' && (
+                  <Link 
+                    to="/admin" 
+                    className="text-accent-700 hover:text-accent-600 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-accent-50 border border-accent-200"
+                  >
+                    Admin Panel
+                  </Link>
+                )}
                 
                 {/* User Info */}
                 <div className="flex items-center space-x-4">

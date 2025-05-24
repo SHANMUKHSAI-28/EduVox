@@ -1,4 +1,123 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "universities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "admin_approved",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ranking_overall",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "universities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "country",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ranking_overall",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "universities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ranking_overall",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "universities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "country",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "admin_approved",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ranking_overall",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "universities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "admin_approved",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ranking_overall",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "universities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "country",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ranking_overall",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "universities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "country",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "admin_approved",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ranking_overall",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

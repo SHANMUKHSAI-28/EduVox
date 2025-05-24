@@ -139,6 +139,158 @@
   .loading-spinner {
     @apply w-6 h-6 border-2 border-secondary-200 border-t-primary-500 rounded-full animate-spin;
   }
+  
+  /* University card specific styles */
+  .university-card {
+    @apply bg-white/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-[1.02];
+  }
+  
+  .match-score-high {
+    @apply bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200;
+  }
+  
+  .match-score-medium {
+    @apply bg-gradient-to-r from-yellow-100 to-amber-100 text-amber-800 border-amber-200;
+  }
+  
+  .match-score-low {
+    @apply bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-red-200;
+  }
+  
+  /* Filter and control styles */
+  .filter-chip {
+    @apply px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer border;
+  }
+  
+  .filter-chip-active {
+    @apply bg-primary-100 text-primary-700 border-primary-300;
+  }
+  
+  .filter-chip-inactive {
+    @apply bg-white text-secondary-600 border-secondary-200 hover:bg-secondary-50;
+  }
+  
+  /* Tab styles */
+  .tab-button {
+    @apply px-6 py-3 rounded-t-lg font-medium transition-all duration-200 border-b-2;
+  }
+  
+  .tab-active {
+    @apply bg-white text-primary-600 border-primary-500;
+  }
+  
+  .tab-inactive {
+    @apply bg-transparent text-secondary-600 border-transparent hover:text-secondary-800 hover:bg-white/50;
+  }
+  
+  /* PDF export button styles */
+  .export-btn {
+    @apply bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105;
+  }
+  
+  /* Additional App-wide Enhancements */
+  .app-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.3) transparent;
+  }
+
+  .app-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.3);
+    border-radius: 3px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.5);
+  }
+
+  /* Loading state animations */
+  .loading-pulse {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Success/Error state classes */
+  .success-state {
+    @apply bg-green-50 border-green-200 text-green-700;
+  }
+
+  .error-state {
+    @apply bg-red-50 border-red-200 text-red-700;
+  }
+
+  .warning-state {
+    @apply bg-yellow-50 border-yellow-200 text-yellow-700;
+  }
+
+  /* Fixed CSS for better UX */
+  .success-state-fixed {
+    background-color: rgb(240 253 244);
+    border-color: rgb(187 247 208);
+    color: rgb(21 128 61);
+  }
+
+  .error-state-fixed {
+    background-color: rgb(254 242 242);
+    border-color: rgb(254 202 202);
+    color: rgb(185 28 28);
+  }
+
+  .warning-state-fixed {
+    background-color: rgb(254 252 232);
+    border-color: rgb(254 240 138);
+    color: rgb(161 98 7);
+  }
+
+  /* PDF Export Button Enhancement */
+  .pdf-export-btn {
+    @apply relative overflow-hidden;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    transition: all 0.3s ease;
+  }
+
+  .pdf-export-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+  }
+
+  .pdf-export-btn:active {
+    transform: translateY(0);
+  }
+
+  /* University Comparison Enhancements */
+  .comparison-modal {
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.95);
+  }
+
+  /* Mobile responsive helpers */
+  @media (max-width: 640px) {
+    .mobile-optimized {
+      @apply px-4 py-2 text-sm;
+    }
+    
+    .mobile-grid {
+      @apply grid-cols-1 gap-4;
+    }
+  }
 }
 
 @layer utilities {
@@ -163,5 +315,86 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+  
+  /* Enhanced gradient backgrounds */
+  .bg-gradient-radial {
+    background: radial-gradient(circle at center, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%);
+  }
+  
+  .bg-gradient-mesh {
+    background: 
+      radial-gradient(at 40% 20%, hsla(228,100%,74%,0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsla(189,100%,56%,0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsla(355,100%,93%,0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, hsla(340,100%,76%,0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(22,100%,77%,0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 100%, hsla(242,100%,70%,0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 0%, hsla(343,100%,76%,0.1) 0px, transparent 50%);
+  }
+  
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+  
+  .animate-bounce-in {
+    animation: bounceIn 0.8s ease-out forwards;
+  }
+}
+
+/* Keyframe animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .university-card {
+    @apply hover:scale-100;
+  }
+  
+  .glass-card {
+    @apply bg-white/90;
   }
 }

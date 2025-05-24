@@ -1,15 +1,97 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
     // Users collection rules
     match /users/{userId} {
       // Allow users to read and write their own data
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
       
       // Allow admins to read and write all user data
-      allow read, write: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read, write: if isAdmin();
+      
+      // Saved universities subcollection
+      match /saved_universities/{universityId} {
+        // Allow users to manage their own saved universities
+        allow read, write: if isOwner(userId);
+        
+        // Allow admins to read all saved universities
+        allow read: if isAdmin();
+      }
+    }
+    
+    // Universities collection rules
+    match /universities/{universityId} {
+      // Allow anyone authenticated to read approved universities
+      allow read: if isAuthenticated() && 
+        (!('admin_approved' in resource.data) || resource.data.admin_approved == true);
+      
+      // Allow admins to read all universities (including unapproved)
+      allow read: if isAdmin();
+      
+      // Allow admins to create, update, and delete universities
+      allow create, update, delete: if isAdmin();
+      
+      // Validation rules for university data
+      allow write: if isAdmin() && 
+        request.resource.data.keys().hasAll(['name', 'country', 'city', 'type']) &&
+        request.resource.data.name is string &&
+        request.resource.data.country in ['US', 'UK', 'Canada', 'Australia'] &&
+        request.resource.data.type in ['public', 'private'] &&
+        request.resource.data.cgpa_requirement is number &&
+        request.resource.data.cgpa_requirement >= 0 &&
+        request.resource.data.cgpa_requirement <= 4.0;
+    }
+    
+    // University reviews collection (future feature)
+    match /university_reviews/{reviewId} {
+      // Allow authenticated users to read all reviews
+      allow read: if isAuthenticated();
+      
+      // Allow users to create reviews (with validation)
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.rating is number &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5;
+      
+      // Allow users to update/delete their own reviews
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Allow admins to manage all reviews
+      allow write: if isAdmin();
+    }
+    
+    // Application tracking collection (future feature)
+    match /applications/{applicationId} {
+      // Allow users to manage their own applications
+      allow read, write: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Allow admins to read all applications
+      allow read: if isAdmin();
+    }
+    
+    // Analytics and usage tracking (admin only)
+    match /analytics/{document} {
+      allow read, write: if isAdmin();
     }
     
     // Default rule: deny all other access
