@@ -2,6 +2,7 @@ const Alert = ({
   type = 'info', 
   title, 
   children, 
+  message,
   onClose,
   className = '' 
 }) => {
@@ -68,8 +69,8 @@ const Alert = ({
               {title}
             </h3>
           )}
-          <div className={`text-sm ${alertStyle.text} leading-relaxed ${title ? '' : ''}`}>
-            {children}
+          <div className={`text-sm ${alertStyle.text} leading-relaxed`}>
+            {message || children}
           </div>
         </div>
         {onClose && (
