@@ -26,7 +26,7 @@ import {
   FaExclamationTriangle 
 } from 'react-icons/fa';
 
-const EdVisor = () => {
+const UniGuidePro = () => {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [pathway, setPathway] = useState(null);
@@ -255,7 +255,7 @@ const EdVisor = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>
           <FaGlobeAmericas className="mr-2" />
-          EdVisor - Study Abroad Roadmap
+          UniGuidePro - Study Abroad Roadmap
         </h1>
         {pathway && (
           <Button variant="outline-primary" onClick={() => setShowForm(true)}>
@@ -602,4 +602,4 @@ const EdVisor = () => {
   );
 };
 
-export default EdVisor;
+export default UniGuidePro;

@@ -23,13 +23,14 @@ const StudyAbroadWidget = () => {
       loadUserPathways();
     }
   }, [currentUser]);
-
   const loadUserPathways = async () => {
     try {
-      const pathways = await studyAbroadService.getUserPathways(currentUser.uid);
-      setUserPathways(pathways);
-      if (pathways.length > 0) {
-        setActivePathway(pathways[0]); // Most recent pathway
+      const pathway = await studyAbroadService.getUserPathway(currentUser.uid);
+      if (pathway) {
+        setUserPathways([pathway]);
+        setActivePathway(pathway);
+      } else {
+        setUserPathways([]);
       }
     } catch (error) {
       console.error('Error loading user pathways:', error);
@@ -62,23 +63,30 @@ const StudyAbroadWidget = () => {
   }
 
   if (userPathways.length === 0) {
-    return (
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-md p-6 border border-blue-200">
+    return (      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-md p-6 border border-blue-200">
         <div className="text-center">
           <FaGlobeAmericas className="mx-auto h-12 w-12 text-blue-500 mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             Start Your Study Abroad Journey
           </h3>
           <p className="text-gray-600 mb-4">
-            Get a personalized roadmap for studying abroad with EdVisor
+            Create your personalized pathway or explore general roadmaps
           </p>
-          <button
-            onClick={() => navigate('/edvisor')}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
-          >
-            <FaPlus className="mr-2" />
-            Create Your Roadmap
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => navigate('/my-study-path')}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
+            >
+              <FaArrowRight className="mr-2" />
+              My Study Path
+            </button>            <button
+              onClick={() => navigate('/uniguidepro')}
+              className="inline-flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 text-sm font-medium rounded-md hover:bg-blue-50 transition-colors duration-200"
+            >
+              <FaPlus className="mr-2" />
+              General UniGuidePro
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -102,9 +110,8 @@ const StudyAbroadWidget = () => {
                 {activePathway.country} • {activePathway.course}
               </p>
             </div>
-          </div>
-          <button
-            onClick={() => navigate('/edvisor')}
+          </div>          <button
+            onClick={() => navigate('/uniguidepro')}
             className="text-white hover:text-blue-100 transition-colors"
           >
             <FaArrowRight size={16} />
@@ -174,32 +181,22 @@ const StudyAbroadWidget = () => {
               </div>
             </div>
           </div>
-        )}
-
-        {/* Quick Actions */}
+        )}        {/* Quick Actions */}
         <div className="mt-4 flex gap-2">
           <button
-            onClick={() => navigate('/edvisor')}
+            onClick={() => navigate('/my-study-path')}
+            className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
+          >
+            My Study Path
+          </button>          <button
+            onClick={() => navigate('/uniguidepro')}
             className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors duration-200"
           >
-            View Roadmap
-          </button>
-          {userPathways.length > 1 && (
-            <button
-              onClick={() => {
-                const currentIndex = userPathways.findIndex(p => p.id === activePathway.id);
-                const nextIndex = (currentIndex + 1) % userPathways.length;
-                setActivePathway(userPathways[nextIndex]);
-              }}
-              className="px-3 py-2 bg-gray-50 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors duration-200"
-            >
-              Switch Pathway
-            </button>
-          )}
-        </div>
+            General UniGuidePro
+          </button>        </div>
 
-        {/* Multiple Pathways Indicator */}
-        {userPathways.length > 1 && (
+        {/* Multiple Pathways Indicator - Hidden for now */}
+        {false && userPathways.length > 1 && (
           <div className="mt-3 text-center">
             <div className="flex justify-center space-x-1">
               {userPathways.map((pathway, index) => (

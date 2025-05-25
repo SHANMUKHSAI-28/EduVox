@@ -94,7 +94,7 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     
-    // Study Abroad Pathways collection (EdVisor feature)
+    // Study Abroad Pathways collection (UniGuidePro feature)
     match /studyAbroadPathways/{pathwayId} {
       // Allow authenticated users to read pathways
       allow read: if isAuthenticated();

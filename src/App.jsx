@@ -14,7 +14,9 @@ import Profile from './pages/Profile';
 import Universities from './pages/Universities';
 import ShortlistedUniversities from './pages/ShortlistedUniversities';
 import AdminPanel from './pages/AdminPanel';
-import EdVisor from './components/features/EdVisor';
+import UniGuidePro from './components/features/UniGuidePro';
+import MyStudyAbroadPath from './components/features/MyStudyAbroadPath';
+import PathwayHistory from './components/features/PathwayHistory';
 
 function AppContent() {
   const { currentUser, loading } = useAuth();
@@ -88,10 +90,26 @@ function AppContent() {
           } 
         />
         <Route 
-          path="/edvisor" 
+          path="/uniguidepro" 
           element={
             <ProtectedRoute>
-              <EdVisor />
+              <UniGuidePro />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/my-study-path" 
+          element={
+            <ProtectedRoute>
+              <MyStudyAbroadPath />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/pathway-history" 
+          element={
+            <ProtectedRoute>
+              <PathwayHistory />
             </ProtectedRoute>
           } 
         />
@@ -100,6 +118,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <AdminPanel />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/pathway-history" 
+          element={
+            <ProtectedRoute>
+              <PathwayHistory />
             </ProtectedRoute>
           } 
         />

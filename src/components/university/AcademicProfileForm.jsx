@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { academicProfileService } from '../../services/universityService';
+import studyAbroadService from '../../services/studyAbroadService';
 import FormInput from '../common/FormInput';
 import FormSelect from '../common/FormSelect';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 
 const AcademicProfileForm = ({ onSave }) => {
-  const { currentUser } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { currentUser } = useAuth();  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [alert, setAlert] = useState(null);  const [formData, setFormData] = useState({
+  const [alert, setAlert] = useState(null);
+  const [previousProfile, setPreviousProfile] = useState(null);const [formData, setFormData] = useState({
     // Personal Information
     full_name: '',
     nationality: '',
@@ -96,13 +97,16 @@ const AcademicProfileForm = ({ onSave }) => {
   useEffect(() => {
     loadAcademicProfile();
   }, [currentUser]);
-
   const loadAcademicProfile = async () => {
     if (!currentUser) return;
 
-    setLoading(true);    try {
+    setLoading(true);
+    try {
       const profile = await academicProfileService.getAcademicProfile(currentUser.uid);
       if (profile) {
+        // Store the previous profile for comparison
+        setPreviousProfile(profile);
+        
         setFormData({
           // Personal Information
           full_name: profile.full_name || '',
@@ -156,7 +160,6 @@ const AcademicProfileForm = ({ onSave }) => {
       };
     });
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -177,13 +180,54 @@ const AcademicProfileForm = ({ onSave }) => {
         budget_max: formData.budget_max ? parseInt(formData.budget_max) : null
       };
 
+      // Check if preferred countries have changed
+      const previousCountries = previousProfile?.preferred_countries || [];
+      const currentCountries = profileData.preferred_countries || [];
+      const countriesChanged = JSON.stringify(previousCountries.sort()) !== JSON.stringify(currentCountries.sort());
+
+      // Save the profile first
       await academicProfileService.updateAcademicProfile(currentUser.uid, profileData);
-      setAlert({ type: 'success', message: 'Academic profile updated successfully!' });
+      
+      // If countries changed, update pathways automatically
+      if (countriesChanged && currentCountries.length > 0) {
+        try {
+          const updateResult = await studyAbroadService.updatePathwaysOnProfileChange(
+            currentUser.uid, 
+            previousCountries, 
+            currentCountries
+          );
+          
+          if (updateResult.success) {
+            setAlert({ 
+              type: 'success', 
+              message: `Academic profile updated successfully! ${updateResult.message}` 
+            });
+          } else {
+            setAlert({ 
+              type: 'warning', 
+              message: `Profile updated, but pathway sync encountered an issue: ${updateResult.message}` 
+            });
+          }
+        } catch (pathwayError) {
+          console.error('Error updating pathways:', pathwayError);
+          setAlert({ 
+            type: 'warning', 
+            message: 'Profile updated successfully, but automatic pathway update failed. Please visit "My Study Path" to regenerate your pathway.' 
+          });
+        }
+      } else {
+        setAlert({ type: 'success', message: 'Academic profile updated successfully!' });
+      }      // Update the previous profile for next comparison
+      setPreviousProfile(profileData);
+      
+      // Set a flag for other components to detect profile updates
+      localStorage.setItem(`profileUpdate_${currentUser.uid}`, Date.now().toString());
       
       if (onSave) {
         onSave(profileData);
       }
     } catch (error) {
+      console.error('Error updating profile:', error);
       setAlert({ type: 'error', message: 'Failed to update academic profile' });
     } finally {
       setSaving(false);

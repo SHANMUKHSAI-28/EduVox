@@ -26,7 +26,7 @@ const AdminPanel = () => {
     {
       id: 'studyabroad',
       name: 'Study Abroad Management',
-      description: 'Manage EdVisor pathways and user analytics'
+      description: 'Manage UniGuidePro pathways and user analytics'
     },
     {
       id: 'settings',
