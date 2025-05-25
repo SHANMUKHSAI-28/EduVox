@@ -41,19 +41,36 @@ const MyStudyAbroadPath = () => {
       setLoading(false);
     }
   };
-
   const loadExistingPathway = async (profile) => {
     try {
+      console.log('🔍 Loading existing pathway for user:', currentUser.uid);
       // Try to get existing user pathway
       const existingPathway = await studyAbroadService.getUserPathway(currentUser.uid);
+      console.log('📊 Existing pathway:', existingPathway);
       
       if (existingPathway) {
-        setPathway(existingPathway);
-        setAlert({
-          type: 'info',
-          message: 'Your saved study abroad pathway has been loaded.'
-        });
+        // Check if pathway needs refresh due to admin updates
+        const refreshedPathway = await studyAbroadService.checkAndRefreshPathway(currentUser.uid, existingPathway);
+        console.log('🔄 Refresh check result:', refreshedPathway);
+        
+        if (refreshedPathway && refreshedPathway.success && refreshedPathway.pathway) {
+          console.log('✅ Setting refreshed pathway');
+          setPathway(refreshedPathway.pathway);
+          setAlert({
+            type: 'success',
+            message: '✨ Your pathway has been updated with the latest program information!',
+            icon: <FaSync />
+          });
+        } else {
+          console.log('✅ Setting existing pathway');
+          setPathway(existingPathway);
+          setAlert({
+            type: 'info',
+            message: 'Your saved study abroad pathway has been loaded.'
+          });
+        }
       } else {
+        console.log('❌ No existing pathway found, generating new one');
         // Auto-generate pathway if profile is complete but no pathway exists
         await generatePersonalizedPath(profile);
       }
@@ -86,6 +103,7 @@ const MyStudyAbroadPath = () => {
   const generatePersonalizedPath = async (profile = userProfile) => {
     if (!profile) return;
 
+    console.log('🚀 Generating personalized path for profile:', profile);
     setGeneratingPath(true);
     setAlert(null);
 
@@ -114,12 +132,27 @@ const MyStudyAbroadPath = () => {
         },
         nationality: profile.nationality,
         fullName: profile.full_name
-      };      const generatedPathway = await studyAbroadService.generatePathway(pathwayData);
-      setPathway(generatedPathway);
+      };
+
+      console.log('📋 Pathway data to generate:', pathwayData);
+      const generatedPathway = await studyAbroadService.generatePathwayWithRefresh(pathwayData);
+      console.log('🎯 Generated pathway result:', generatedPathway);
+      
+      // Check if the result has the expected structure
+      if (generatedPathway && generatedPathway.success && generatedPathway.pathway) {
+        console.log('✅ Setting pathway from success result');
+        setPathway(generatedPathway.pathway);
+      } else if (generatedPathway && generatedPathway.steps) {
+        console.log('✅ Setting pathway directly');
+        setPathway(generatedPathway);
+      } else {
+        console.log('❌ Unexpected pathway structure:', generatedPathway);
+        throw new Error('Invalid pathway structure received');
+      }
       
       setAlert({
         type: 'success',
-        message: 'Your study abroad pathway has been updated with your latest profile information!'
+        message: 'Your study abroad pathway has been generated with the latest program information!'
       });
     } catch (error) {
       console.error('Error generating pathway:', error);
@@ -157,16 +190,58 @@ const MyStudyAbroadPath = () => {
       });
     }
   };
-
   const regeneratePathway = async () => {
     if (!userProfile) return;
     
+    setGeneratingPath(true);
     setAlert({
       type: 'info',
-      message: 'Regenerating your pathway with updated profile information...'
+      message: 'Refreshing your pathway with the latest information...',
+      icon: <FaSync className="animate-spin" />
     });
     
-    await generatePersonalizedPath(userProfile);
+    try {
+      const pathwayData = {
+        userId: currentUser.uid,
+        preferredCountry: userProfile.preferred_countries?.[0] || 'USA',
+        desiredCourse: userProfile.preferred_fields_of_study?.[0] || 'Computer Science',
+        academicLevel: userProfile.education_level || 'Bachelor',
+        budget: {
+          min: userProfile.budget_min || 0,
+          max: userProfile.budget_max || 100000
+        },
+        currentGPA: userProfile.cgpa || 0,
+        englishProficiency: {
+          ielts: userProfile.ielts_score || 0,
+          toefl: userProfile.toefl_score || 0
+        },
+        standardizedTests: {
+          gre: userProfile.gre_score || 0
+        },
+        timeline: {
+          targetIntake: userProfile.target_intake,
+          targetYear: userProfile.target_year
+        },
+        nationality: userProfile.nationality,
+        fullName: userProfile.full_name
+      };
+
+      const refreshedPathway = await studyAbroadService.generatePathwayWithRefresh(pathwayData);
+      setPathway(refreshedPathway);
+      
+      setAlert({
+        type: 'success',
+        message: '✨ Your pathway has been refreshed with the latest program updates and your current profile!'
+      });
+    } catch (error) {
+      console.error('Error refreshing pathway:', error);
+      setAlert({
+        type: 'error',
+        message: 'Failed to refresh your pathway. Please try again.'
+      });
+    } finally {
+      setGeneratingPath(false);
+    }
   };
 
   const getStepStatusIcon = (status) => {
@@ -187,29 +262,49 @@ const MyStudyAbroadPath = () => {
     const completedSteps = pathway.steps.filter(step => step.status === 'completed').length;
     return Math.round((completedSteps / pathway.steps.length) * 100);
   };
-
   // Check for profile updates that might require pathway sync
   useEffect(() => {
-    const checkForProfileUpdates = () => {
-      const profileUpdateTimestamp = localStorage.getItem(`profileUpdate_${currentUser?.uid}`);
+    const checkForProfileUpdates = async () => {
+      if (!currentUser || !userProfile || !pathway) return;
+      
+      const profileUpdateTimestamp = localStorage.getItem(`profileUpdate_${currentUser.uid}`);
       if (profileUpdateTimestamp && profileUpdateTimestamp !== lastProfileUpdate) {
         setLastProfileUpdate(profileUpdateTimestamp);
-        setAlert({
-          type: 'info',
-          message: '🔄 Your pathway has been automatically updated based on your recent profile changes.',
-          icon: <FaSync className="animate-spin" />
-        });
-        // Reload the pathway to show updates
-        if (userProfile) {
-          loadExistingPathway(userProfile);
+        
+        // Check if the country or course has changed (major changes)
+        const currentCountry = userProfile.preferred_countries?.[0];
+        const currentCourse = userProfile.preferred_fields_of_study?.[0];
+        
+        if (pathway.country !== currentCountry || pathway.course !== currentCourse) {
+          setAlert({
+            type: 'info',
+            message: '🔄 Major profile changes detected. Generating updated pathway...',
+            icon: <FaSync className="animate-spin" />
+          });
+          await generatePersonalizedPath(userProfile);
+        } else {
+          // Minor changes - just refresh existing pathway
+          try {
+            const refreshedPathway = await studyAbroadService.checkAndRefreshPathway(currentUser.uid, pathway);
+            if (refreshedPathway && refreshedPathway.id !== pathway.id) {
+              setPathway(refreshedPathway);
+              setAlert({
+                type: 'success',
+                message: '✨ Your pathway has been updated based on your profile changes.',
+                icon: <FaSync />
+              });
+            }
+          } catch (error) {
+            console.error('Error refreshing pathway:', error);
+          }
         }
       }
     };
 
-    // Check for updates every 5 seconds when component is active
-    const interval = setInterval(checkForProfileUpdates, 5000);
+    // Check for updates every 10 seconds when component is active
+    const interval = setInterval(checkForProfileUpdates, 10000);
     return () => clearInterval(interval);
-  }, [currentUser, lastProfileUpdate, userProfile]);
+  }, [currentUser, lastProfileUpdate, userProfile, pathway]);
 
   if (loading) {
     return (
@@ -341,9 +436,7 @@ const MyStudyAbroadPath = () => {
               ></div>
             </div>
           </div>
-        )}
-
-        {/* Pathway Actions */}
+        )}        {/* Pathway Actions */}
         {pathway && (
           <div className="mt-4 flex gap-3">
             <Button
@@ -351,7 +444,15 @@ const MyStudyAbroadPath = () => {
               disabled={generatingPath}
               className="bg-white bg-opacity-25 hover:bg-opacity-35 text-white border border-white border-opacity-40 font-semibold drop-shadow-sm backdrop-blur-sm"
             >
-              {generatingPath ? 'Regenerating...' : 'Update Pathway'}
+              <FaSync className={`mr-2 ${generatingPath ? 'animate-spin' : ''}`} />
+              {generatingPath ? 'Refreshing...' : 'Refresh Pathway'}
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/pathway-history'}
+              className="bg-white bg-opacity-25 hover:bg-opacity-35 text-white border border-white border-opacity-40 font-semibold drop-shadow-sm backdrop-blur-sm"
+            >
+              <FaBell className="mr-2" />
+              View History
             </Button>
           </div>
         )}
@@ -392,6 +493,23 @@ const MyStudyAbroadPath = () => {
         </div>
       </div>
 
+      {/* Debug Information */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-gray-100 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Debug Information:</h3>
+          <p className="text-xs text-gray-600">User Profile: {userProfile ? '✅ Loaded' : '❌ Missing'}</p>
+          <p className="text-xs text-gray-600">Pathway: {pathway ? '✅ Loaded' : '❌ Missing'}</p>
+          <p className="text-xs text-gray-600">Profile Complete: {isProfileComplete(userProfile) ? '✅ Yes' : '❌ No'}</p>
+          {pathway && (
+            <>
+              <p className="text-xs text-gray-600">Pathway Steps: {pathway.steps?.length || 0}</p>
+              <p className="text-xs text-gray-600">Country: {pathway.country || 'Not set'}</p>
+              <p className="text-xs text-gray-600">Course: {pathway.course || 'Not set'}</p>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Generate Pathway Button */}
       {!pathway && (
         <div className="bg-white rounded-lg shadow-md p-8 text-center mb-8">
@@ -405,6 +523,27 @@ const MyStudyAbroadPath = () => {
             className="bg-blue-600 hover:bg-blue-700 px-8 py-3"
           >
             {generatingPath ? 'Generating Your Path...' : 'Generate My Pathway'}
+          </Button>
+        </div>
+      )}
+
+      {/* No Pathway Available */}
+      {!pathway && !generatingPath && userProfile && isProfileComplete(userProfile) && (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center mb-8">
+          <div className="text-gray-400 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 13l-6-3m6 3V4" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Pathway Available</h2>
+          <p className="text-gray-600 mb-6">
+            We couldn't load or generate your study abroad pathway. Let's try creating one now.
+          </p>
+          <Button
+            onClick={() => generatePersonalizedPath()}
+            className="bg-blue-600 hover:bg-blue-700 px-8 py-3"
+          >
+            Generate My Pathway
           </Button>
         </div>
       )}

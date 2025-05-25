@@ -1020,8 +1020,7 @@ class StudyAbroadService {
       );
       
       const existingSnapshot = await getDocs(existingPathwayQuery);
-      
-      if (!existingSnapshot.empty) {
+        if (!existingSnapshot.empty) {
         // Update existing pathway for the same country
         const existingDoc = existingSnapshot.docs[0];
         const existingData = existingDoc.data();
@@ -1037,7 +1036,10 @@ class StudyAbroadService {
           steps: this.mergeStepProgress(existingData.steps, pathwayData.steps)
         };
 
-        await updateDoc(existingDoc.ref, updatedPathway);
+        // Filter out undefined values to prevent Firestore errors
+        const cleanedPathway = this.removeUndefinedFields(updatedPathway);
+
+        await updateDoc(existingDoc.ref, cleanedPathway);
         return existingDoc.id;
       } else {
         // Create new pathway for different country
@@ -1051,7 +1053,10 @@ class StudyAbroadService {
           isActive: true
         };
 
-        await setDoc(doc(db, this.userPathwaysCollection, userPathwayId), pathwayWithMeta);
+        // Filter out undefined values to prevent Firestore errors
+        const cleanedPathway = this.removeUndefinedFields(pathwayWithMeta);
+
+        await setDoc(doc(db, this.userPathwaysCollection, userPathwayId), cleanedPathway);
         return userPathwayId;
       }
     } catch (error) {
@@ -1553,6 +1558,201 @@ class StudyAbroadService {
       }
       return newStep;
     });
+  }
+
+  /**
+   * Remove undefined fields from an object to prevent Firestore errors
+   */
+  removeUndefinedFields(obj) {
+    if (obj === null || obj === undefined) {
+      return obj;
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.removeUndefinedFields(item));
+    }
+    
+    if (typeof obj === 'object') {
+      const cleaned = {};
+      for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined) {
+          cleaned[key] = this.removeUndefinedFields(value);
+        }
+      }
+      return cleaned;
+    }
+    
+    return obj;
+  }
+  /**
+   * Check for pathway template updates and refresh user pathway if needed
+   */
+  async checkAndRefreshPathway(userId, currentPathway) {
+    try {
+      if (!currentPathway || !currentPathway.country || !currentPathway.course) {
+        return { 
+          success: false, 
+          needsUpdate: false, 
+          reason: 'Invalid pathway data',
+          pathway: currentPathway
+        };
+      }
+
+      // Get the latest pathway template for this country/course combination
+      const templateId = this.generatePathwayId(
+        currentPathway.country, 
+        currentPathway.course, 
+        currentPathway.academicLevel || 'graduate'
+      );
+      
+      const latestTemplate = await this.getExistingPathway(templateId);
+      
+      if (!latestTemplate) {
+        return { 
+          success: false, 
+          needsUpdate: false, 
+          reason: 'No template found',
+          pathway: currentPathway
+        };
+      }
+
+      // Check if template was updated after user's pathway
+      const userPathwayDate = new Date(currentPathway.updatedAt || currentPathway.createdAt);
+      const templateDate = new Date(latestTemplate.updatedAt || latestTemplate.createdAt);
+      
+      if (templateDate > userPathwayDate) {
+        // Refresh the pathway with latest template
+        const refreshResult = await this.refreshPathwayFromTemplate(userId, currentPathway, latestTemplate);
+        return {
+          success: true,
+          needsUpdate: true,
+          reason: 'Admin updated pathway template',
+          pathway: refreshResult.pathway
+        };
+      }
+
+      return { 
+        success: false, 
+        needsUpdate: false, 
+        reason: 'Pathway is up to date',
+        pathway: currentPathway
+      };
+    } catch (error) {
+      console.error('Error checking pathway updates:', error);
+      return { 
+        success: false, 
+        needsUpdate: false, 
+        reason: 'Error checking updates',
+        pathway: currentPathway
+      };
+    }
+  }
+
+  /**
+   * Refresh pathway with latest template data while preserving user progress
+   */
+  async refreshPathwayFromTemplate(userId, userPathway, latestTemplate) {
+    try {
+      // Merge latest template with user's current progress
+      const refreshedPathway = {
+        ...latestTemplate,
+        // Preserve user-specific data
+        userId: userPathway.userId,
+        createdAt: userPathway.createdAt,
+        updatedAt: new Date().toISOString(),
+        pathwayType: 'user_generated',
+        isActive: true,
+        lastRefreshedAt: new Date().toISOString(),
+        // Preserve step progress
+        steps: this.mergeStepProgress(userPathway.steps, latestTemplate.steps)
+      };
+
+      // Save the refreshed pathway
+      await this.saveUserPathway(userId, refreshedPathway);
+      
+      return {
+        success: true,
+        message: 'Pathway updated with latest information from admin',
+        pathway: refreshedPathway
+      };
+    } catch (error) {
+      console.error('Error refreshing pathway:', error);
+      return {
+        success: false,
+        message: 'Failed to refresh pathway',
+        pathway: null
+      };
+    }
+  }
+  /**
+   * Enhanced pathway generation with automatic refresh logic
+   */
+  async generatePathwayWithRefresh(userProfile, forceRefresh = false) {
+    try {
+      const { userId, preferredCountry, desiredCourse, academicLevel } = userProfile;
+
+      // Get current user pathway
+      const currentPathway = await this.getUserPathway(userId);
+      
+      // Check if country or course changed (requires new pathway)
+      const countryChanged = currentPathway && currentPathway.country !== preferredCountry;
+      const courseChanged = currentPathway && currentPathway.course !== desiredCourse;
+      
+      if (countryChanged || courseChanged || !currentPathway) {
+        // Generate completely new pathway
+        const newPathway = await this.generatePathway(userProfile);
+        return {
+          success: true,
+          message: 'New pathway generated successfully',
+          pathway: newPathway
+        };
+      }
+
+      // Check for template updates if not forcing refresh
+      if (!forceRefresh) {
+        const updateCheck = await this.checkAndRefreshPathway(userId, currentPathway);
+        
+        if (updateCheck.success && updateCheck.needsUpdate) {
+          return {
+            success: true,
+            message: 'Pathway refreshed with latest updates',
+            pathway: updateCheck.pathway
+          };
+        }
+        
+        // No updates needed, return current pathway
+        return {
+          success: true,
+          message: 'Your pathway is already up to date',
+          pathway: currentPathway
+        };
+      }
+
+      // Force refresh requested
+      const templateId = this.generatePathwayId(preferredCountry, desiredCourse, academicLevel);
+      const latestTemplate = await this.getExistingPathway(templateId);
+      
+      if (latestTemplate) {
+        const refreshResult = await this.refreshPathwayFromTemplate(userId, currentPathway, latestTemplate);
+        return {
+          success: true,
+          message: 'Pathway force refreshed',
+          pathway: refreshResult.pathway
+        };
+      } else {
+        // No template exists, generate new pathway
+        const newPathway = await this.generatePathway(userProfile);
+        return {
+          success: true,
+          message: 'New pathway generated (no template found)',
+          pathway: newPathway
+        };
+      }
+      
+    } catch (error) {
+      console.error('Error in generatePathwayWithRefresh:', error);
+      throw new Error('Failed to generate or refresh pathway');
+    }
   }
 
   // ...existing code...
