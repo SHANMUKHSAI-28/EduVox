@@ -7,10 +7,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '../firebaseConfig.js';
 import { collection, doc, setDoc, getDocs, query, where, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
-class PathwayScrapingService {
-  constructor() {
+class PathwayScrapingService {  constructor() {
     this.genAI = new GoogleGenerativeAI(import.meta.env.VITE_GOOGLE_AI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
+    this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     // Define all possible combinations for pathway generation
     this.countries = [
@@ -46,12 +45,21 @@ class PathwayScrapingService {
       'Malaysian', 'Thai', 'Filipino', 'Sri Lankan', 'Nepalese', 'Afghan'
     ];
   }
-
   /**
    * Generate pathway using Gemini AI
    */
   async generatePathwayWithAI(profile) {
     try {
+      // Validate API key first
+      if (!import.meta.env.VITE_GOOGLE_AI_API_KEY) {
+        throw new Error('Google AI API key is not configured. Please add VITE_GOOGLE_AI_API_KEY to your environment variables.');
+      }
+
+      // Validate profile data
+      if (!profile.country || !profile.course || !profile.academicLevel) {
+        throw new Error('Profile is missing required fields: country, course, or academicLevel');
+      }
+
       const prompt = `
 Generate a comprehensive study abroad pathway for:
 - Country: ${profile.country}

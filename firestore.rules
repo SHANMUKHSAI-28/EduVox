@@ -114,7 +114,18 @@ service cloud.firestore {
         (request.resource != null && request.resource.data.userId == request.auth.uid);
       
       // Allow admins to read all user pathways
+      allow read, write: if isAdmin();    }
+    
+    // Pathways collection rules (for pre-scraped pathways)
+    match /pathways/{pathwayId} {
+      // Allow authenticated users to read pathways
+      allow read: if isAuthenticated();
+      
+      // Allow admins to read and write pathways
       allow read, write: if isAdmin();
+      
+      // Allow pathway scraping service to write pathways (for admin users)
+      allow write: if isAdmin();
     }
     
     // Default rule: deny all other access

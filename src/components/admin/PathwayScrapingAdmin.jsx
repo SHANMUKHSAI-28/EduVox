@@ -35,9 +35,7 @@ const PathwayScrapingAdmin = () => {
     setIsScrapingActive(true);
     setScrapingProgress({ completed: 0, total: 0, status: 'starting' });
     setAlert(null);
-    setScrapingResults(null);
-
-    try {
+    setScrapingResults(null);    try {
       const results = await pathwayScrapingService.scrapeAllPathways((progress) => {
         setScrapingProgress(progress);
       });
