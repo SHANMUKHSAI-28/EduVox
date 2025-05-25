@@ -94,6 +94,29 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     
+    // Study Abroad Pathways collection (EdVisor feature)
+    match /studyAbroadPathways/{pathwayId} {
+      // Allow authenticated users to read pathways
+      allow read: if isAuthenticated();
+      
+      // Allow authenticated users to create their own pathways
+      allow create: if isAuthenticated();
+      
+      // Allow admins to create, update, and delete pathways
+      allow write: if isAdmin();
+    }
+      // User-specific Study Abroad Pathways
+    match /userStudyAbroadPathways/{pathwayDocId} {
+      // Allow users to read and write their own pathways (pathwayDocId format: userId_pathwayId)
+      // Check based on the userId field in the document
+      allow read, write: if isAuthenticated() && 
+        (resource != null && resource.data.userId == request.auth.uid) ||
+        (request.resource != null && request.resource.data.userId == request.auth.uid);
+      
+      // Allow admins to read all user pathways
+      allow read, write: if isAdmin();
+    }
+    
     // Default rule: deny all other access
     match /{document=**} {
       allow read, write: if false;

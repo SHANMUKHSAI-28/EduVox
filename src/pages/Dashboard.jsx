@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/common/Sidebar';
 import AdBanner from '../components/ads/AdBanner';
+import StudyAbroadWidget from '../components/features/StudyAbroadWidget';
 import { academicProfileService, savedUniversitiesService } from '../services/universityService';
 
 const Dashboard = () => {
@@ -290,6 +291,11 @@ const Dashboard = () => {
                   size="large" 
                   format="horizontal"
                 />
+              </div>
+
+              {/* Study Abroad Roadmap Widget */}
+              <div className="mb-6">
+                <StudyAbroadWidget />
               </div>
 
               {/* Quick actions */}

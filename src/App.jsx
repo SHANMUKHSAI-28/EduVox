@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import Universities from './pages/Universities';
 import ShortlistedUniversities from './pages/ShortlistedUniversities';
 import AdminPanel from './pages/AdminPanel';
+import EdVisor from './components/features/EdVisor';
 
 function AppContent() {
   const { currentUser, loading } = useAuth();
@@ -83,6 +84,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <ShortlistedUniversities />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/edvisor" 
+          element={
+            <ProtectedRoute>
+              <EdVisor />
             </ProtectedRoute>
           } 
         />

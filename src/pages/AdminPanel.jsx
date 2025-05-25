@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import ManageUniversities from './ManageUniversities';
 import DatabaseMaintenance from './DatabaseMaintenance';
+import StudyAbroadAdmin from '../components/admin/StudyAbroadAdmin';
 
 const AdminPanel = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -17,11 +18,15 @@ const AdminPanel = () => {
       id: 'universities',
       name: 'Manage Universities',
       description: 'Add, update, and verify university information'
-    },
-    {
+    },    {
       id: 'database',
       name: 'Database Maintenance',
       description: 'Run migrations and maintain database integrity'
+    },
+    {
+      id: 'studyabroad',
+      name: 'Study Abroad Management',
+      description: 'Manage EdVisor pathways and user analytics'
     },
     {
       id: 'settings',
@@ -32,9 +37,10 @@ const AdminPanel = () => {
   const renderModuleContent = () => {
     switch (activeModule) {
       case 'universities':
-        return <ManageUniversities />;
-      case 'database':
+        return <ManageUniversities />;      case 'database':
         return <DatabaseMaintenance />;
+      case 'studyabroad':
+        return <StudyAbroadAdmin />;
       case 'settings':
         return (
           <div className="p-6">
