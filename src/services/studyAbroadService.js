@@ -21,7 +21,7 @@ class StudyAbroadService {
   }
 
   /**
-   * Generate or retrieve a personalized study abroad roadmap
+   * Generate or retrieve a study abroad roadmap (STATIC ONLY, AI REMOVED)
    * @param {Object} userProfile - User's academic and preference data
    * @returns {Object} - Complete study abroad pathway
    */
@@ -31,12 +31,7 @@ class StudyAbroadService {
         userId,
         preferredCountry,
         desiredCourse,
-        academicLevel,
-        budget,
-        targetCompany,
-        currentGPA,
-        englishProficiency,
-        workExperience
+        academicLevel
       } = userProfile;
 
       // Create a unique pathway ID based on preferences
@@ -44,18 +39,14 @@ class StudyAbroadService {
 
       // Check if pathway already exists
       const existingPathway = await this.getExistingPathway(pathwayId);
-      
       if (existingPathway) {
-        // Personalize existing pathway for the user
+        // Personalize existing pathway for the user (static logic only)
         const personalizedPathway = await this.personalizePathway(existingPathway, userProfile);
         await this.saveUserPathway(userId, personalizedPathway);
-        return personalizedPathway;
-      }      // Generate new pathway
-      const newPathway = await this.createNewPathway(userProfile);
-      
-      // Save user pathway (don't save to global collection for regular users)
+        return personalizedPathway;      }
+      // Always use static pathway generation
+      const newPathway = await this.createStaticPathway(userProfile);
       await this.saveUserPathway(userId, newPathway);
-
       return newPathway;
     } catch (error) {
       console.error('Error generating study abroad pathway:', error);
@@ -81,86 +72,70 @@ class StudyAbroadService {
       console.error('Error fetching existing pathway:', error);
       return null;
     }
-  }
-  /**
-   * Create a new comprehensive study abroad pathway using AI/Google API
+  }  /**
+   * Create a new comprehensive study abroad pathway (STATIC ONLY, AI REMOVED)
    */
-  async createNewPathway(userProfile) {
-    try {
-      // Generate a specification hash to check if we already have this pathway
-      const specHash = this.generateSpecificationHash(userProfile);
-      
-      // Check if we already have a pathway for this specification
-      const existingPathway = await this.getPathwayBySpecification(specHash);
-      if (existingPathway) {
-        console.log('Found existing pathway for similar specification');
-        return existingPathway;
-      }
-
-      console.log('Generating new pathway using AI API for specification:', specHash);
-      
-      // Generate pathway using external AI service
-      const aiGeneratedPathway = await this.generatePathwayWithAI(userProfile);
-      
-      // Save the generated pathway to database for future reuse
-      await this.savePathwaySpecification(specHash, aiGeneratedPathway, userProfile);
-      
-      return aiGeneratedPathway;
-    } catch (error) {
-      console.error('Error creating pathway with AI:', error);
-      // Fallback to static generation if AI fails
-      console.log('Falling back to static pathway generation');
-      return this.createStaticPathway(userProfile);
-    }
+  createNewPathway(userProfile) {
+    // Only use static pathway logic
+    return this.createStaticPathway(userProfile);
   }
 
   /**
-   * Generate a specification hash based on user profile key characteristics
+   * Create a static study abroad pathway based on user profile
    */
-  generateSpecificationHash(userProfile) {
+  async createStaticPathway(userProfile) {
     const {
-      preferredCountry,
-      desiredCourse,
-      academicLevel,
-      currentGPA,
-      nationality,
-      budget
+      preferredCountry = 'United States',
+      desiredCourse = 'Computer Science',
+      academicLevel = 'graduate',
+      userId
     } = userProfile;
 
-    // Create a hash based on key specifications that affect pathway
-    const spec = {
-      country: preferredCountry?.toLowerCase() || 'unknown',
-      course: desiredCourse?.toLowerCase().replace(/\s+/g, '-') || 'unknown',
-      level: academicLevel?.toLowerCase() || 'unknown',
-      gpaRange: this.getGPARange(currentGPA),
-      nationality: nationality?.toLowerCase() || 'unknown',
-      budgetRange: this.getBudgetRange(budget)
+    // Generate pathway ID
+    const pathwayId = this.generatePathwayId(preferredCountry, desiredCourse, academicLevel);
+
+    // Create comprehensive pathway using static data
+    const pathway = {
+      id: pathwayId,
+      country: preferredCountry,
+      course: desiredCourse,
+      academicLevel: academicLevel,
+      createdAt: new Date().toISOString(),
+      type: 'static',
+      
+      // Generate step-by-step pathway
+      steps: await this.generatePathwaySteps(userProfile),
+      
+      // Generate timeline
+      timeline: this.generateTimeline(academicLevel),
+      
+      // Generate requirements
+      requirements: await this.generateRequirements(preferredCountry, desiredCourse),
+      
+      // Get cost breakdown
+      costs: await this.generateCostBreakdown(preferredCountry, academicLevel),
+      
+      // Get university recommendations
+      universities: await this.getRecommendedUniversities(preferredCountry, desiredCourse),
+      
+      // Get visa information
+      visa: await this.getVisaInformation(preferredCountry),
+      
+      // Get career prospects
+      career: await this.getCareerProspects(desiredCourse, preferredCountry),
+      
+      // Get scholarship opportunities
+      scholarships: await this.getScholarshipOpportunities(preferredCountry, desiredCourse),
+      
+      // Get country-specific tips
+      tips: this.generateCountrySpecificTips(preferredCountry),
+      
+      // Additional metadata
+      generatedBy: 'Static Logic',
+      lastUpdated: new Date().toISOString()
     };
 
-    // Create a consistent hash
-    return `${spec.country}_${spec.course}_${spec.level}_${spec.gpaRange}_${spec.nationality}_${spec.budgetRange}`;
-  }
-
-  /**
-   * Get GPA range for specification
-   */
-  getGPARange(gpa) {
-    if (!gpa || gpa < 2.5) return 'low';
-    if (gpa < 3.0) return 'medium';
-    if (gpa < 3.5) return 'high';
-    return 'excellent';
-  }
-
-  /**
-   * Get budget range for specification
-   */
-  getBudgetRange(budget) {
-    if (!budget || !budget.max) return 'unknown';
-    const maxBudget = budget.max;
-    if (maxBudget < 20000) return 'low';
-    if (maxBudget < 40000) return 'medium';
-    if (maxBudget < 70000) return 'high';
-    return 'premium';
+    return pathway;
   }
 
   /**
@@ -1022,69 +997,68 @@ class StudyAbroadService {
       console.error('Error fetching user pathway:', error);
       return null;
     }
-  }
-  /**
+  }  /**
    * Save or update user pathway with improved history management
+   * Updates existing pathway for same country, creates new for different country
    */
   async saveUserPathway(userId, pathwayData) {
     try {
-      // Create unique pathway ID with timestamp for history
-      const userPathwayId = `${userId}_${pathwayData.country}_${pathwayData.course}_${Date.now()}`;
-      const pathwayWithMeta = {
-        ...pathwayData,
-        userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        // Add metadata for better tracking
-        pathwayType: 'user_generated',
-        isActive: true
-      };
+      // Validate required parameters
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      if (!pathwayData || !pathwayData.country) {
+        throw new Error('Pathway data with country is required');
+      }
 
-      // Save to user pathways collection
-      await setDoc(doc(db, this.userPathwaysCollection, userPathwayId), pathwayWithMeta);
+      // Check if user already has a pathway for this country
+      const existingPathwayQuery = query(
+        collection(db, this.userPathwaysCollection),
+        where('userId', '==', userId),
+        where('country', '==', pathwayData.country),
+        where('isActive', '==', true)
+      );
       
-      // Mark any previous pathways for same country as inactive
-      await this.markPreviousPathwaysInactive(userId, pathwayData.country, userPathwayId);
+      const existingSnapshot = await getDocs(existingPathwayQuery);
       
-      return userPathwayId;
+      if (!existingSnapshot.empty) {
+        // Update existing pathway for the same country
+        const existingDoc = existingSnapshot.docs[0];
+        const existingData = existingDoc.data();
+        
+        const updatedPathway = {
+          ...pathwayData,
+          userId,
+          createdAt: existingData.createdAt, // Keep original creation date
+          updatedAt: new Date().toISOString(),
+          pathwayType: 'user_generated',
+          isActive: true,
+          // Preserve step progress if it exists
+          steps: this.mergeStepProgress(existingData.steps, pathwayData.steps)
+        };
+
+        await updateDoc(existingDoc.ref, updatedPathway);
+        return existingDoc.id;
+      } else {
+        // Create new pathway for different country
+        const userPathwayId = `${userId}_${pathwayData.country}_${pathwayData.course}_${Date.now()}`;
+        const pathwayWithMeta = {
+          ...pathwayData,
+          userId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          pathwayType: 'user_generated',
+          isActive: true
+        };
+
+        await setDoc(doc(db, this.userPathwaysCollection, userPathwayId), pathwayWithMeta);
+        return userPathwayId;
+      }
     } catch (error) {
       console.error('Error saving user pathway:', error);
       throw new Error('Failed to save pathway');
     }
-  }
-
-  /**
-   * Mark previous pathways as inactive to maintain history
-   */
-  async markPreviousPathwaysInactive(userId, country, excludeId) {
-    try {
-      const userPathwaysQuery = query(
-        collection(db, this.userPathwaysCollection),
-        where('userId', '==', userId),
-        where('country', '==', country),
-        where('isActive', '==', true)
-      );
-      
-      const snapshot = await getDocs(userPathwaysQuery);
-      
-      // Update previous pathways to inactive
-      const updatePromises = snapshot.docs
-        .filter(doc => doc.id !== excludeId)
-        .map(doc => 
-          updateDoc(doc.ref, { 
-            isActive: false, 
-            updatedAt: new Date().toISOString() 
-          })
-        );
-      
-      await Promise.all(updatePromises);
-    } catch (error) {
-      console.error('Error marking previous pathways inactive:', error);
-      // Don't throw error - this is not critical for pathway saving
-    }
-  }
-
-  /**
+  }  /**
    * Update user pathway step status
    */
   async updateUserPathwayStep(userId, stepIndex, newStatus) {
@@ -1235,865 +1209,353 @@ class StudyAbroadService {
   }
 
   /**
-   * Admin: Get all user pathways with statistics
+   * Admin: Update user pathway
    */
-  async getAllUserPathways() {
+  async updateUserPathwayByAdmin(pathwayId, updates) {
     try {
-      const q = query(
-        collection(db, this.userPathwaysCollection),
-        orderBy('createdAt', 'desc')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const pathways = [];
-      
-      querySnapshot.forEach((doc) => {
-        pathways.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      return pathways;
-    } catch (error) {
-      console.error('Error fetching all user pathways:', error);
-      return [];
-    }
-  }
-  /**
-   * Get user's pathway history
-   * @param {string} userId - User ID
-   * @returns {Array} - Array of user's pathways
-   */
-  async getUserPathwayHistory(userId) {
-    try {
-      const userPathwaysRef = collection(db, this.userPathwaysCollection);
-      // Use a simpler query that doesn't require a composite index
-      const q = query(
-        userPathwaysRef,
-        where('userId', '==', userId)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const pathways = [];
-      
-      querySnapshot.forEach((doc) => {
-        pathways.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-      
-      // Sort by createdAt in JavaScript instead of Firestore
-      return pathways.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA; // Descending order (newest first)
-      });
-    } catch (error) {
-      console.error('Error fetching user pathway history:', error);
-      // Return empty array instead of throwing error to prevent UI crashes
-      return [];
-    }
-  }
-
-  // Helper methods for data generation
-  getAverageSalary(course, country) {
-    // Implementation for average salary data
-    return 'Data varies by specialization and experience';
-  }
-
-  getJobMarket(course, country) {
-    // Implementation for job market analysis
-    return 'Generally positive outlook';
-  }
-
-  getTopEmployers(course, country) {
-    // Implementation for top employers list
-    return ['Google', 'Microsoft', 'Apple', 'Amazon', 'Meta'];
-  }
-
-  getCareerPaths(course) {
-    // Implementation for career paths
-    return ['Technical Specialist', 'Project Manager', 'Research Scientist', 'Entrepreneur'];
-  }
-
-  getPostStudyWorkRights(country) {
-    const workRights = {
-      'United States': 'OPT: 12 months (36 months for STEM)',
-      'United Kingdom': 'Graduate Route: 2 years (3 years for PhD)',
-      'Canada': 'PGWP: Up to 3 years based on study duration',
-      'Australia': 'Temporary Graduate visa: 2-4 years'
-    };
-    return workRights[country] || 'Varies by country and program';
-  }
-
-  async getTargetCompanyInfo(company, country) {
-    // Implementation for target company information
-    return {
-      name: company,
-      locations: ['Multiple locations'],
-      hiringTrends: 'Active recruitment',
-      requirements: 'Strong technical skills, relevant degree'
-    };
-  }
-
-  assessBudgetAlignment(totalCosts, userBudget) {
-    const minCost = totalCosts.min;
-    const maxCost = totalCosts.max;
-    
-    if (userBudget >= maxCost) {
-      return { status: 'excellent', message: 'Budget covers all expenses comfortably' };
-    } else if (userBudget >= minCost) {
-      return { status: 'good', message: 'Budget covers basic expenses, consider scholarships for premium options' };
-    } else {
-      return { status: 'challenging', message: 'Budget below minimum requirements, scholarships/financial aid essential' };
-    }
-  }
-
-  /**
-   * Get pathway by specification hash from database
-   */
-  async getPathwayBySpecification(specHash) {
-    try {
-      const specDoc = await getDoc(doc(db, 'pathwaySpecifications', specHash));
-      if (specDoc.exists()) {
-        const data = specDoc.data();
-        console.log(`Found cached pathway for specification: ${specHash}`);
-        return data.pathway;
+      // Validate required parameters
+      if (!pathwayId) {
+        throw new Error('Pathway ID is required');
       }
-      return null;
-    } catch (error) {
-      console.error('Error fetching pathway by specification:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Save pathway specification to database for future reuse
-   */
-  async savePathwaySpecification(specHash, pathway, userProfile) {
-    try {
-      await setDoc(doc(db, 'pathwaySpecifications', specHash), {
-        specHash,
-        pathway,
-        userProfile: {
-          country: userProfile.preferredCountry,
-          course: userProfile.desiredCourse,
-          academicLevel: userProfile.academicLevel,
-          gpaRange: this.getGPARange(userProfile.currentGPA),
-          nationality: userProfile.nationality,
-          budgetRange: this.getBudgetRange(userProfile.budget)
-        },
-        createdAt: new Date().toISOString(),
-        usageCount: 1,
-        lastUsed: new Date().toISOString()
-      });
-      console.log(`Saved pathway specification: ${specHash}`);
-    } catch (error) {
-      console.error('Error saving pathway specification:', error);
-    }
-  }
-
-  /**
-   * Generate pathway using AI/Google API
-   */
-  async generatePathwayWithAI(userProfile) {
-    try {
-      // Prepare the prompt for AI
-      const prompt = this.createAIPrompt(userProfile);
-      
-      // Call external AI service (Google Gemini, OpenAI, etc.)
-      const aiResponse = await this.callAIService(prompt);
-      
-      // Parse and structure the AI response
-      return this.parseAIResponse(aiResponse, userProfile);
-    } catch (error) {
-      console.error('Error generating pathway with AI:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Create AI prompt based on user profile
-   */
-  createAIPrompt(userProfile) {
-    const {
-      preferredCountry,
-      desiredCourse,
-      academicLevel,
-      currentGPA,
-      englishProficiency,
-      standardizedTests,
-      budget,
-      nationality,
-      timeline
-    } = userProfile;
-
-    return `Generate a comprehensive study abroad pathway for the following student profile:
-
-**Student Details:**
-- Nationality: ${nationality}
-- Academic Level: ${academicLevel}
-- Current GPA: ${currentGPA}
-- Preferred Country: ${preferredCountry}
-- Desired Course: ${desiredCourse}
-- Budget Range: $${budget?.min || 0} - $${budget?.max || 100000}
-- Target Intake: ${timeline?.targetIntake} ${timeline?.targetYear}
-
-**Current Test Scores:**
-- IELTS: ${englishProficiency?.ielts || 'Not taken'}
-- TOEFL: ${englishProficiency?.toefl || 'Not taken'}
-- GRE: ${standardizedTests?.gre || 'Not taken'}
-
-**Requirements:**
-1. Generate 8-10 detailed steps for the study abroad journey
-2. Include accurate country-specific requirements for ${preferredCountry}
-3. Provide realistic timelines for each step
-4. Include only relevant tests (no Abitur/TestAS for MS in Germany)
-5. Suggest top 5 universities with accurate fees
-6. Include visa information and work permissions
-7. Provide scholarship opportunities
-8. Include country-specific tips and advice
-
-**Important Notes:**
-- For Master's in Germany: No Abitur or TestAS required
-- Focus on practical, actionable advice
-- Include accurate cost breakdowns
-- Mention relevant work opportunities during/after studies
-
-Please provide the response in a structured JSON format with the following sections:
-- steps (array of step objects with title, description, duration, tasks, status)
-- universities (array of university objects)
-- costs (object with tuition, living, miscellaneous)
-- visaInfo (object with type, requirements, workPermissions)
-- scholarships (array of scholarship opportunities)
-- tips (array of country-specific tips)
-- timeline (object with phases and durations)`;
-  }
-
-  /**
-   * Call AI service (implement your preferred AI service here)
-   */
-  async callAIService(prompt) {
-    try {
-      // Option 1: Google Gemini API
-      if (process.env.VITE_GOOGLE_AI_API_KEY) {
-        return await this.callGoogleGemini(prompt);
-      }
-      
-      // Option 2: OpenAI API
-      if (process.env.VITE_OPENAI_API_KEY) {
-        return await this.callOpenAI(prompt);
-      }
-      
-      // Option 3: Local AI service or fallback
-      console.warn('No AI API key found, using fallback generation');
-      throw new Error('No AI service available');
-      
-    } catch (error) {
-      console.error('AI service call failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Call Google Gemini API
-   */
-  async callGoogleGemini(prompt) {
-    try {
-      const apiKey = process.env.VITE_GOOGLE_AI_API_KEY;
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 8192,
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+      if (!updates) {
+        throw new Error('Update data is required');
       }
 
-      const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
-    } catch (error) {
-      console.error('Error calling Google Gemini:', error);
-      throw error;
-    }
-  }
-  /**
-   * Call OpenAI API (alternative)
-   */
-  async callOpenAI(prompt) {
-    try {
-      const apiKey = process.env.VITE_OPENAI_API_KEY;
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert study abroad counselor. Provide accurate, detailed guidance for international students.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 8000,
-          temperature: 0.7
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0].message.content;
-    } catch (error) {
-      console.error('Error calling OpenAI:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Parse AI response and structure it into pathway format
-   */
-  parseAIResponse(aiResponse, userProfile) {
-    try {
-      // Clean the response and try to extract JSON
-      let cleanResponse = aiResponse.trim();
-      
-      // Remove code block markers if present
-      if (cleanResponse.startsWith('```json')) {
-        cleanResponse = cleanResponse.replace(/```json\s*/, '').replace(/```\s*$/, '');
-      } else if (cleanResponse.startsWith('```')) {
-        cleanResponse = cleanResponse.replace(/```\s*/, '').replace(/```\s*$/, '');
-      }
-
-      // Try to parse as JSON
-      let parsedData;
-      try {
-        parsedData = JSON.parse(cleanResponse);
-      } catch (parseError) {
-        // If JSON parsing fails, try to extract JSON from the response
-        const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsedData = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('No valid JSON found in AI response');
-        }
-      }
-
-      // Structure the pathway according to our format
-      const pathway = {
-        id: this.generatePathwayId(
-          userProfile.preferredCountry, 
-          userProfile.desiredCourse, 
-          userProfile.academicLevel
-        ),
-        country: userProfile.preferredCountry,
-        course: userProfile.desiredCourse,
-        academicLevel: userProfile.academicLevel,
-        generatedAt: new Date().toISOString(),
-        generatedBy: 'AI',
-        
-        // Parse steps from AI response
-        steps: this.parseAISteps(parsedData.steps),
-        
-        // Parse universities from AI response
-        universities: this.parseAIUniversities(parsedData.universities || []),
-        
-        // Parse costs from AI response
-        costs: this.parseAICosts(parsedData.costs || {}),
-        
-        // Parse visa information
-        visaInfo: this.parseAIVisaInfo(parsedData.visaInfo || {}),
-        
-        // Parse scholarships
-        scholarships: this.parseAIScholarships(parsedData.scholarships || []),
-        
-        // Parse tips
-        tips: parsedData.tips || [],
-        
-        // Parse timeline
-        timeline: this.parseAITimeline(parsedData.timeline || {}),
-        
-        // Add metadata
-        requirements: {
-          academic: this.getAcademicRequirements(userProfile.preferredCountry, userProfile.desiredCourse),
-          documents: this.getDocumentRequirements(userProfile.preferredCountry),
-          financial: this.getFinancialRequirements(userProfile.preferredCountry),
-          language: this.getLanguageRequirements(userProfile.preferredCountry, 'intermediate')
-        }
+      // Add update metadata
+      const updateData = {
+        ...updates,
+        updatedAt: new Date().toISOString(),
+        lastModifiedBy: 'admin'
       };
 
-      return pathway;
+      await updateDoc(doc(db, this.userPathwaysCollection, pathwayId), updateData);
+      return true;
     } catch (error) {
-      console.error('Error parsing AI response:', error);
-      // Fallback to static generation if parsing fails
-      console.log('AI response parsing failed, falling back to static generation');
-      return this.createStaticPathway(userProfile);
+      console.error('Error updating user pathway by admin:', error);
+      throw new Error('Failed to update pathway');
     }
   }
 
   /**
-   * Parse AI steps response
+   * Admin: Create pathway template
    */
-  parseAISteps(aiSteps) {
-    if (!Array.isArray(aiSteps)) return this.getDefaultSteps();
-    
-    return aiSteps.map((step, index) => ({
-      step: index + 1,
-      title: step.title || `Step ${index + 1}`,
-      description: step.description || '',
-      duration: step.duration || '1-2 months',
-      tasks: Array.isArray(step.tasks) ? step.tasks : [step.tasks || 'Complete this step'],
-      status: 'pending'
-    }));
-  }
-
-  /**
-   * Parse AI universities response
-   */
-  parseAIUniversities(aiUniversities) {
-    if (!Array.isArray(aiUniversities)) return [];
-    
-    return aiUniversities.slice(0, 5).map((uni, index) => ({
-      name: uni.name || `University ${index + 1}`,
-      ranking: uni.ranking || null,
-      location: uni.location || '',
-      tuitionFee: uni.tuitionFee || uni.fees || 'Contact university',
-      requirements: uni.requirements || [],
-      website: uni.website || '',
-      reputation: uni.reputation || 'Good'
-    }));
-  }
-
-  /**
-   * Parse AI costs response
-   */
-  parseAICosts(aiCosts) {
-    return {
-      tuition: {
-        min: aiCosts.tuition?.min || aiCosts.tuition || 20000,
-        max: aiCosts.tuition?.max || aiCosts.tuition || 50000,
-        currency: 'USD'
-      },
-      living: {
-        min: aiCosts.living?.min || aiCosts.living || 15000,
-        max: aiCosts.living?.max || aiCosts.living || 25000,
-        currency: 'USD'
-      },
-      miscellaneous: {
-        min: aiCosts.miscellaneous?.min || aiCosts.miscellaneous || 5000,
-        max: aiCosts.miscellaneous?.max || aiCosts.miscellaneous || 10000,
-        currency: 'USD'
-      },
-      total: {
-        min: (aiCosts.tuition?.min || 20000) + (aiCosts.living?.min || 15000) + (aiCosts.miscellaneous?.min || 5000),
-        max: (aiCosts.tuition?.max || 50000) + (aiCosts.living?.max || 25000) + (aiCosts.miscellaneous?.max || 10000),
-        currency: 'USD'
+  async createPathwayTemplate(templateData) {
+    try {
+      // Validate required parameters
+      if (!templateData || !templateData.country || !templateData.course) {
+        throw new Error('Template data with country and course is required');
       }
-    };
+
+      const templateId = this.generatePathwayId(
+        templateData.country, 
+        templateData.course, 
+        templateData.academicLevel || 'graduate'
+      );
+
+      const template = {
+        ...templateData,
+        id: templateId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        type: 'template',
+        createdBy: 'admin'
+      };
+
+      await setDoc(doc(db, this.pathwaysCollection, templateId), template);
+      return templateId;
+    } catch (error) {
+      console.error('Error creating pathway template:', error);
+      throw new Error('Failed to create pathway template');
+    }
   }
 
   /**
-   * Parse AI visa information
+   * Admin: Update pathway template
    */
-  parseAIVisaInfo(aiVisaInfo) {
-    return {
-      type: aiVisaInfo.type || 'Student Visa',
-      requirements: Array.isArray(aiVisaInfo.requirements) ? aiVisaInfo.requirements : [],
-      workPermissions: aiVisaInfo.workPermissions || 'Limited work allowed',
-      processingTime: aiVisaInfo.processingTime || '2-4 weeks'
-    };
-  }
-
-  /**
-   * Parse AI scholarships response
-   */
-  parseAIScholarships(aiScholarships) {
-    if (!Array.isArray(aiScholarships)) return [];
-    
-    return aiScholarships.map(scholarship => ({
-      name: scholarship.name || 'Scholarship Opportunity',
-      amount: scholarship.amount || 'Varies',
-      eligibility: Array.isArray(scholarship.eligibility) ? scholarship.eligibility : [scholarship.eligibility || 'Check requirements'],
-      deadline: scholarship.deadline || 'Check website'
-    }));
-  }
-
-  /**
-   * Parse AI timeline response
-   */
-  parseAITimeline(aiTimeline) {
-    return {
-      totalDuration: aiTimeline.totalDuration || '18-24 months',
-      phases: Array.isArray(aiTimeline.phases) ? aiTimeline.phases : [
-        { phase: 'Preparation', duration: '12-18 months', description: 'Academic prep, tests, research' },
-        { phase: 'Application', duration: '3-6 months', description: 'Apply to universities' },
-        { phase: 'Decision & Visa', duration: '3-4 months', description: 'Accept offers, visa process' }
-      ]
-    };
-  }
-
-  /**
-   * Create static pathway as fallback when AI fails
-   */
-  createStaticPathway(userProfile) {
-    const {
-      preferredCountry,
-      desiredCourse,
-      academicLevel,
-      budget,
-      currentGPA,
-      englishProficiency
-    } = userProfile;
-
-    const pathwayId = this.generatePathwayId(preferredCountry, desiredCourse, academicLevel);
-    
-    return {
-      id: pathwayId,
-      country: preferredCountry,
-      course: desiredCourse,
-      academicLevel: academicLevel,
-      generatedAt: new Date().toISOString(),
-      generatedBy: 'Static',
-      
-      // Generate steps using existing methods
-      steps: this.getDefaultSteps(userProfile),
-      
-      // Generate universities using existing data
-      universities: this.getDefaultUniversities(preferredCountry, desiredCourse),
-      
-      // Generate costs using existing methods
-      costs: this.getDefaultCosts(preferredCountry, academicLevel),
-      
-      // Generate visa info
-      visaInfo: this.getDefaultVisaInfo(preferredCountry),
-      
-      // Generate scholarships
-      scholarships: this.getDefaultScholarships(preferredCountry, desiredCourse),
-      
-      // Generate tips
-      tips: this.generateCountrySpecificTips(preferredCountry),
-      
-      // Generate timeline
-      timeline: this.generateTimeline(academicLevel),
-      
-      // Requirements
-      requirements: {
-        academic: this.getAcademicRequirements(preferredCountry, desiredCourse),
-        documents: this.getDocumentRequirements(preferredCountry),
-        financial: this.getFinancialRequirements(preferredCountry),
-        language: this.getLanguageRequirements(preferredCountry, 'intermediate')
+  async updatePathwayTemplate(templateId, updates) {
+    try {
+      if (!templateId) {
+        throw new Error('Template ID is required');
       }
-    };
-  }
-
-  /**
-   * Get default steps for fallback
-   */
-  getDefaultSteps(userProfile) {
-    const { academicLevel, preferredCountry, englishProficiency } = userProfile;
-    
-    return [
-      {
-        step: 1,
-        title: "Academic Preparation",
-        description: "Improve academic credentials and GPA",
-        duration: "6-12 months",
-        tasks: [
-          "Maintain/improve current GPA",
-          "Complete prerequisite courses",
-          "Build strong academic portfolio"
-        ],
-        status: "pending"
-      },
-      {
-        step: 2,
-        title: "Language Proficiency",
-        description: "Achieve required English proficiency scores",
-        duration: "3-6 months",
-        tasks: this.getLanguageRequirements(preferredCountry, englishProficiency),
-        status: "pending"
-      },
-      {
-        step: 3,
-        title: "Standardized Tests",
-        description: "Prepare and take required standardized tests",
-        duration: "3-6 months",
-        tasks: this.getStandardizedTestRequirements(academicLevel, preferredCountry),
-        status: "pending"
-      },
-      {
-        step: 4,
-        title: "University Research",
-        description: "Research and shortlist universities",
-        duration: "2-3 months",
-        tasks: [
-          "Research university rankings and programs",
-          "Check admission requirements",
-          "Shortlist 8-12 universities",
-          "Contact admissions offices"
-        ],
-        status: "pending"
-      },
-      {
-        step: 5,
-        title: "Application Preparation",
-        description: "Prepare application materials",
-        duration: "3-4 months",
-        tasks: [
-          "Write statement of purpose",
-          "Prepare resume/CV",
-          "Collect recommendation letters",
-          "Prepare portfolio (if required)"
-        ],
-        status: "pending"
-      },
-      {
-        step: 6,
-        title: "Financial Planning",
-        description: "Arrange funding and financial documents",
-        duration: "2-4 months",
-        tasks: [
-          "Apply for scholarships",
-          "Arrange education loans",
-          "Prepare financial documents",
-          "Plan for living expenses"
-        ],
-        status: "pending"
-      },
-      {
-        step: 7,
-        title: "Application Submission",
-        description: "Submit university applications",
-        duration: "1-2 months",
-        tasks: [
-          "Complete online applications",
-          "Submit required documents",
-          "Pay application fees",
-          "Track application status"
-        ],
-        status: "pending"
-      },
-      {
-        step: 8,
-        title: "Visa Preparation",
-        description: "Prepare for student visa application",
-        duration: "2-3 months",
-        tasks: this.getVisaPreparationTasks(preferredCountry),
-        status: "pending"
-      },
-      {
-        step: 9,
-        title: "Pre-Departure",
-        description: "Final preparations before departure",
-        duration: "1-2 months",
-        tasks: [
-          "Book accommodation",
-          "Arrange airport pickup",
-          "Pack essentials",
-          "Complete orientation programs"
-        ],
-        status: "pending"
+      if (!updates) {
+        throw new Error('Update data is required');
       }
-    ];
+
+      const updateData = {
+        ...updates,
+        updatedAt: new Date().toISOString(),
+        lastModifiedBy: 'admin'
+      };
+
+      await updateDoc(doc(db, this.pathwaysCollection, templateId), updateData);
+      return true;
+    } catch (error) {
+      console.error('Error updating pathway template:', error);
+      throw new Error('Failed to update pathway template');
+    }
   }
 
   /**
-   * Get default universities for fallback
+   * Admin: Get pathway statistics
    */
-  getDefaultUniversities(country, course) {
-    const universityData = {
-      'United States': [
-        { name: 'Stanford University', ranking: '#2', location: 'California', tuitionFee: '$55,000', reputation: 'Excellent' },
-        { name: 'MIT', ranking: '#1', location: 'Massachusetts', tuitionFee: '$53,000', reputation: 'Excellent' },
-        { name: 'UC Berkeley', ranking: '#4', location: 'California', tuitionFee: '$45,000', reputation: 'Excellent' },
-        { name: 'Carnegie Mellon', ranking: '#7', location: 'Pennsylvania', tuitionFee: '$57,000', reputation: 'Excellent' },
-        { name: 'University of Washington', ranking: '#15', location: 'Washington', tuitionFee: '$38,000', reputation: 'Very Good' }
-      ],
-      'United Kingdom': [
-        { name: 'University of Cambridge', ranking: '#2', location: 'England', tuitionFee: '£35,000', reputation: 'Excellent' },
-        { name: 'University of Oxford', ranking: '#1', location: 'England', tuitionFee: '£35,000', reputation: 'Excellent' },
-        { name: 'Imperial College London', ranking: '#3', location: 'London', tuitionFee: '£32,000', reputation: 'Excellent' },
-        { name: 'University College London', ranking: '#8', location: 'London', tuitionFee: '£28,000', reputation: 'Excellent' },
-        { name: 'University of Edinburgh', ranking: '#15', location: 'Scotland', tuitionFee: '£25,000', reputation: 'Very Good' }
-      ],
-      'Canada': [
-        { name: 'University of Toronto', ranking: '#18', location: 'Ontario', tuitionFee: 'CAD $45,000', reputation: 'Excellent' },
-        { name: 'University of British Columbia', ranking: '#34', location: 'Vancouver', tuitionFee: 'CAD $42,000', reputation: 'Excellent' },
-        { name: 'McGill University', ranking: '#27', location: 'Montreal', tuitionFee: 'CAD $38,000', reputation: 'Excellent' },
-        { name: 'University of Waterloo', ranking: '#166', location: 'Ontario', tuitionFee: 'CAD $35,000', reputation: 'Very Good' },
-        { name: 'University of Alberta', ranking: '#119', location: 'Alberta', tuitionFee: 'CAD $32,000', reputation: 'Very Good' }
-      ],
-      'Germany': [
-        { name: 'Technical University of Munich', ranking: '#50', location: 'Munich', tuitionFee: '€500/semester', reputation: 'Excellent' },
-        { name: 'RWTH Aachen University', ranking: '#106', location: 'Aachen', tuitionFee: '€300/semester', reputation: 'Excellent' },
-        { name: 'University of Heidelberg', ranking: '#64', location: 'Heidelberg', tuitionFee: '€350/semester', reputation: 'Excellent' },
-        { name: 'Humboldt University', ranking: '#120', location: 'Berlin', tuitionFee: '€300/semester', reputation: 'Very Good' },
-        { name: 'University of Stuttgart', ranking: '#279', location: 'Stuttgart', tuitionFee: '€350/semester', reputation: 'Very Good' }
-      ],
-      'Australia': [
-        { name: 'University of Melbourne', ranking: '#33', location: 'Melbourne', tuitionFee: 'AUD $45,000', reputation: 'Excellent' },
-        { name: 'Australian National University', ranking: '#30', location: 'Canberra', tuitionFee: 'AUD $43,000', reputation: 'Excellent' },
-        { name: 'University of Sydney', ranking: '#41', location: 'Sydney', tuitionFee: 'AUD $48,000', reputation: 'Excellent' },
-        { name: 'University of Queensland', ranking: '#47', location: 'Brisbane', tuitionFee: 'AUD $40,000', reputation: 'Excellent' },
-        { name: 'Monash University', ranking: '#58', location: 'Melbourne', tuitionFee: 'AUD $42,000', reputation: 'Very Good' }
-      ]
-    };
+  async getPathwayStatistics() {
+    try {
+      const [pathways, userPathways] = await Promise.all([
+        this.getAllPathways(),
+        this.getAllUserPathways()
+      ]);
 
-    return universityData[country] || universityData['United States'];
+      const stats = {
+        totalTemplates: pathways.length,
+        totalUserPathways: userPathways.length,
+        activeUserPathways: userPathways.filter(p => p.isActive).length,
+        countryDistribution: {},
+        courseDistribution: {},
+        completionRates: []
+      };
+
+      // Calculate distributions
+      userPathways.forEach(pathway => {
+        if (pathway.country) {
+          stats.countryDistribution[pathway.country] = 
+            (stats.countryDistribution[pathway.country] || 0) + 1;
+        }
+        if (pathway.course) {
+          stats.courseDistribution[pathway.course] = 
+            (stats.courseDistribution[pathway.course] || 0) + 1;
+        }
+
+        // Calculate completion rate for this pathway
+        if (pathway.steps && pathway.steps.length > 0) {
+          const completedSteps = pathway.steps.filter(s => s.status === 'completed').length;
+          const completionRate = (completedSteps / pathway.steps.length) * 100;
+          stats.completionRates.push(completionRate);
+        }
+      });
+
+      // Calculate average completion rate
+      stats.averageCompletionRate = stats.completionRates.length > 0
+        ? stats.completionRates.reduce((a, b) => a + b, 0) / stats.completionRates.length
+        : 0;
+
+      return stats;
+    } catch (error) {
+      console.error('Error getting pathway statistics:', error);
+      throw new Error('Failed to get pathway statistics');
+    }
   }
 
   /**
-   * Get default costs for fallback
+   * Get average salary for course and country
    */
-  getDefaultCosts(country, academicLevel) {
-    const costData = {
+  getAverageSalary(course, country) {
+    const salaryData = {
       'United States': {
-        tuition: { min: 30000, max: 60000, currency: 'USD' },
-        living: { min: 15000, max: 25000, currency: 'USD' },
-        miscellaneous: { min: 5000, max: 10000, currency: 'USD' }
+        'Computer Science': '$95,000 - $150,000',
+        'Data Science': '$90,000 - $140,000',
+        'Business Administration': '$70,000 - $120,000',
+        'Engineering': '$80,000 - $130,000',
+        'default': '$65,000 - $100,000'
       },
       'United Kingdom': {
-        tuition: { min: 20000, max: 40000, currency: 'GBP' },
-        living: { min: 12000, max: 18000, currency: 'GBP' },
-        miscellaneous: { min: 3000, max: 6000, currency: 'GBP' }
+        'Computer Science': '£35,000 - £65,000',
+        'Data Science': '£32,000 - £60,000',
+        'Business Administration': '£28,000 - £50,000',
+        'Engineering': '£30,000 - £55,000',
+        'default': '£25,000 - £45,000'
       },
       'Canada': {
-        tuition: { min: 25000, max: 45000, currency: 'CAD' },
-        living: { min: 12000, max: 20000, currency: 'CAD' },
-        miscellaneous: { min: 4000, max: 8000, currency: 'CAD' }
+        'Computer Science': 'CAD $65,000 - $95,000',
+        'Data Science': 'CAD $60,000 - $90,000',
+        'Business Administration': 'CAD $50,000 - $75,000',
+        'Engineering': 'CAD $55,000 - $85,000',
+        'default': 'CAD $45,000 - $70,000'
       },
-      'Germany': {
-        tuition: { min: 500, max: 3000, currency: 'EUR' },
-        living: { min: 10000, max: 15000, currency: 'EUR' },
-        miscellaneous: { min: 3000, max: 5000, currency: 'EUR' }
-      },
-      'Australia': {
-        tuition: { min: 25000, max: 50000, currency: 'AUD' },
-        living: { min: 15000, max: 25000, currency: 'AUD' },
-        miscellaneous: { min: 5000, max: 10000, currency: 'AUD' }
+      'default': {
+        'Computer Science': '$50,000 - $80,000',
+        'Data Science': '$45,000 - $75,000',
+        'Business Administration': '$40,000 - $65,000',
+        'Engineering': '$42,000 - $70,000',
+        'default': '$35,000 - $60,000'
       }
     };
 
-    const costs = costData[country] || costData['United States'];
-    
+    const countryData = salaryData[country] || salaryData['default'];
+    return countryData[course] || countryData['default'];
+  }
+
+  /**
+   * Get job market information
+   */
+  getJobMarket(course, country) {
     return {
-      ...costs,
-      total: {
-        min: costs.tuition.min + costs.living.min + costs.miscellaneous.min,
-        max: costs.tuition.max + costs.living.max + costs.miscellaneous.max,
-        currency: costs.tuition.currency
-      }
+      demand: 'High',
+      growth: '10-15% annually',
+      competitiveness: 'Moderate to High',
+      keySkills: ['Technical expertise', 'Communication', 'Problem-solving']
     };
   }
 
   /**
-   * Get default visa info for fallback
+   * Get top employers for course and country
    */
-  getDefaultVisaInfo(country) {
-    const visaData = {
+  getTopEmployers(course, country) {
+    const employers = {
       'United States': {
-        type: 'F-1 Student Visa',
-        requirements: ['I-20 form', 'SEVIS fee payment', 'Passport', 'Financial documents'],
-        workPermissions: 'On-campus work allowed, OPT after graduation',
-        processingTime: '2-4 weeks'
+        'Computer Science': ['Google', 'Microsoft', 'Apple', 'Amazon', 'Facebook'],
+        'Data Science': ['Google', 'Netflix', 'Uber', 'Airbnb', 'Tesla'],
+        'Business Administration': ['McKinsey', 'Goldman Sachs', 'JP Morgan', 'Deloitte', 'PwC'],
+        'default': ['Fortune 500 companies', 'Startups', 'Government agencies']
       },
       'United Kingdom': {
-        type: 'Student Visa (Tier 4)',
-        requirements: ['CAS number', 'Financial proof', 'English proficiency', 'TB test'],
-        workPermissions: '20 hours/week during studies, 2-year post-study work visa',
-        processingTime: '3-4 weeks'
+        'Computer Science': ['DeepMind', 'ARM', 'BAE Systems', 'Rolls-Royce', 'BT'],
+        'Data Science': ['DeepMind', 'Babylon Health', 'Monzo', 'Revolut', 'BBC'],
+        'Business Administration': ['HSBC', 'Barclays', 'Unilever', 'BP', 'Vodafone'],
+        'default': ['FTSE 100 companies', 'Tech startups', 'Financial services']
       },
-      'Canada': {
-        type: 'Study Permit',
-        requirements: ['Letter of acceptance', 'Financial proof', 'Medical exam', 'Police clearance'],
-        workPermissions: '20 hours/week during studies, 3-year PGWP available',
-        processingTime: '4-8 weeks'
-      },
-      'Germany': {
-        type: 'Student Visa (National Visa)',
-        requirements: ['Admission letter', 'Financial proof', 'Health insurance', 'Academic credentials'],
-        workPermissions: '120 full days or 240 half days per year',
-        processingTime: '6-12 weeks'
-      },
-      'Australia': {
-        type: 'Student Visa (Subclass 500)',
-        requirements: ['CoE', 'GTE statement', 'Financial capacity', 'Health insurance'],
-        workPermissions: '40 hours/fortnight during studies, 2-4 year post-study work visa',
-        processingTime: '4-6 weeks'
+      'default': {
+        'Computer Science': ['Tech companies', 'Consulting firms', 'Financial institutions'],
+        'Data Science': ['Tech companies', 'Healthcare', 'Finance', 'E-commerce'],
+        'Business Administration': ['Consulting', 'Banking', 'Healthcare', 'Retail'],
+        'default': ['Various industries', 'Multinational corporations', 'Local companies']
       }
     };
 
-    return visaData[country] || visaData['United States'];
+    const countryData = employers[country] || employers['default'];
+    return countryData[course] || countryData['default'];
   }
 
   /**
-   * Get default scholarships for fallback
+   * Get career paths for course
    */
-  getDefaultScholarships(country, course) {
-    const scholarshipData = {
-      'United States': [
-        { name: 'Fulbright Scholarship', amount: 'Full funding', eligibility: ['Academic excellence', 'Leadership potential'] },
-        { name: 'Merit-based scholarships', amount: '$5,000-$25,000', eligibility: ['High GPA', 'Test scores'] },
-        { name: 'Need-based aid', amount: 'Varies', eligibility: ['Financial need demonstration'] }
+  getCareerPaths(course) {
+    const paths = {
+      'Computer Science': [
+        'Software Engineer',
+        'Data Scientist',
+        'Product Manager',
+        'Tech Lead',
+        'Solutions Architect'
       ],
-      'United Kingdom': [
-        { name: 'Chevening Scholarship', amount: 'Full funding', eligibility: ['Leadership potential', 'Academic merit'] },
-        { name: 'Commonwealth Scholarship', amount: 'Full funding', eligibility: ['Commonwealth countries'] },
-        { name: 'University scholarships', amount: '£5,000-£15,000', eligibility: ['Academic excellence'] }
+      'Data Science': [
+        'Data Scientist',
+        'Machine Learning Engineer',
+        'Data Analyst',
+        'Research Scientist',
+        'AI Engineer'
       ],
-      'Canada': [
-        { name: 'Vanier Canada Graduate Scholarships', amount: 'CAD $50,000', eligibility: ['PhD students', 'Academic excellence'] },
-        { name: 'Ontario Graduate Scholarship', amount: 'CAD $15,000', eligibility: ['Graduate students in Ontario'] },
-        { name: 'University entrance scholarships', amount: 'CAD $5,000-$20,000', eligibility: ['High academic achievement'] }
+      'Business Administration': [
+        'Management Consultant',
+        'Business Analyst',
+        'Project Manager',
+        'Operations Manager',
+        'Strategy Manager'
       ],
-      'Germany': [
-        { name: 'DAAD Scholarship', amount: '€850-€1,200/month', eligibility: ['Academic excellence', 'Various programs'] },
-        { name: 'Deutschlandstipendium', amount: '€300/month', eligibility: ['High achievement', 'Social engagement'] },
-        { name: 'Erasmus+', amount: '€200-€300/month', eligibility: ['EU exchange students'] }
-      ],
-      'Australia': [
-        { name: 'Australia Awards Scholarship', amount: 'Full funding', eligibility: ['Developing countries', 'Leadership'] },
-        { name: 'Research Training Program', amount: 'AUD $28,000/year', eligibility: ['Research students'] },
-        { name: 'University merit scholarships', amount: 'AUD $5,000-$20,000', eligibility: ['Academic excellence'] }
+      'default': [
+        'Entry-level positions',
+        'Specialist roles',
+        'Management positions',
+        'Consulting opportunities',
+        'Entrepreneurship'
       ]
     };
 
-    return scholarshipData[country] || scholarshipData['United States'];
+    return paths[course] || paths['default'];
   }
+
+  /**
+   * Get post-study work rights
+   */
+  getPostStudyWorkRights(country) {
+    const workRights = {
+      'United States': {
+        duration: '1-3 years (OPT/STEM OPT)',
+        requirements: 'Valid F-1 status, employment in field of study',
+        pathway: 'Can lead to H-1B visa application'
+      },
+      'United Kingdom': {
+        duration: '2 years (Graduate visa)',
+        requirements: 'Completed degree from UK institution',
+        pathway: 'Can switch to Skilled Worker visa'
+      },
+      'Canada': {
+        duration: '1-3 years (PGWP)',
+        requirements: 'Completed program at eligible institution',
+        pathway: 'Can lead to permanent residence'
+      },
+      'Australia': {
+        duration: '2-4 years (PSW visa)',
+        requirements: 'Completed 2+ year degree',
+        pathway: 'Points-based permanent residence pathway'
+      },
+      'Germany': {
+        duration: '18 months (job search visa)',
+        requirements: 'Completed German degree',
+        pathway: 'Can lead to EU Blue Card'
+      },
+      'default': {
+        duration: 'Varies by country',
+        requirements: 'Check specific country requirements',
+        pathway: 'Country-specific immigration pathways'
+      }
+    };
+
+    return workRights[country] || workRights['default'];
+  }
+
+  /**
+   * Get target company information (placeholder)
+   */
+  async getTargetCompanyInfo(targetCompany, country) {
+    return {
+      name: targetCompany,
+      presence: `Has operations in ${country}`,
+      opportunities: 'Various entry-level and experienced positions',
+      requirements: 'Relevant degree and skills'
+    };
+  }
+
+  /**
+   * Merge step progress from existing pathway with new pathway steps
+   * Preserves user's completed/in-progress status while updating step content
+   */
+  mergeStepProgress(existingSteps, newSteps) {
+    if (!existingSteps || !Array.isArray(existingSteps)) {
+      return newSteps;
+    }
+    
+    if (!newSteps || !Array.isArray(newSteps)) {
+      return existingSteps;
+    }
+
+    // Create a map of existing step progress by step number
+    const existingProgress = {};
+    existingSteps.forEach(step => {
+      if (step.step) {
+        existingProgress[step.step] = {
+          status: step.status,
+          completedAt: step.completedAt,
+          notes: step.notes
+        };
+      }
+    });
+
+    // Merge progress with new steps
+    return newSteps.map(newStep => {
+      const existingStepProgress = existingProgress[newStep.step];
+      if (existingStepProgress) {
+        return {
+          ...newStep,
+          status: existingStepProgress.status,
+          completedAt: existingStepProgress.completedAt,
+          notes: existingStepProgress.notes
+        };
+      }
+      return newStep;
+    });
+  }
+
+  // ...existing code...
 }
 
-const studyAbroadService = new StudyAbroadService();
-
-// Export individual functions for easier importing
-export const getUserPathwayHistory = (userId) => studyAbroadService.getUserPathwayHistory(userId);
-export const getUserPathway = (userId) => studyAbroadService.getUserPathway(userId);
-export const saveUserPathway = (userId, pathway) => studyAbroadService.saveUserPathway(userId, pathway);
-export const updateUserPathwayStep = (userId, stepId, status) => studyAbroadService.updateUserPathwayStep(userId, stepId, status);
-export const generatePathwayFromProfile = (profile) => studyAbroadService.generatePathwayFromProfile(profile);
-
-export default studyAbroadService;
+export default new StudyAbroadService();

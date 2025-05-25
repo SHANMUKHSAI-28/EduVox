@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getUserPathwayHistory } from '../../services/studyAbroadService';
+import studyAbroadService from '../../services/studyAbroadService';
 import { formatDate } from '../../utils/dateUtils';
 import { Link } from 'react-router-dom';
 
@@ -12,11 +12,9 @@ const PathwayHistory = () => {
 
   useEffect(() => {
     const fetchPathwayHistory = async () => {
-      if (!currentUser) return;
-
-      try {
+      if (!currentUser) return;      try {
         setLoading(true);
-        const history = await getUserPathwayHistory(currentUser.uid);
+        const history = await studyAbroadService.getUserPathways(currentUser.uid);
         setPathwayHistory(history);
       } catch (err) {
         console.error('Error fetching pathway history:', err);
@@ -92,10 +90,9 @@ const PathwayHistory = () => {
                 </Link>
               </div>
             </div>
-          ) : (
-            <div className="space-y-6">
+          ) : (            <div className="space-y-6">
               {pathwayHistory.map((pathway, index) => (
-                <div key={pathway.id} className="border border-secondary-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200">
+                <div key={`${pathway.id}_${pathway.createdAt}_${index}`} className="border border-secondary-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-secondary-900 mb-2">
@@ -124,21 +121,24 @@ const PathwayHistory = () => {
                         {Math.round((pathway.steps?.filter(step => step.status === 'completed').length || 0) / (pathway.steps?.length || 1) * 100)}%
                       </div>
                     </div>
-                  </div>
-
-                  {/* Pathway Summary */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  </div>                  {/* Pathway Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                     <div className="bg-secondary-50 rounded-lg p-3">
-                      <div className="text-sm text-secondary-600 mb-1">Target Countries</div>
+                      <div className="text-sm text-secondary-600 mb-1">Target Country</div>
                       <div className="text-sm font-medium text-secondary-900">
-                        {pathway.profile?.preferred_countries?.slice(0, 2).join(', ') || 'Not specified'}
-                        {pathway.profile?.preferred_countries?.length > 2 && ` +${pathway.profile.preferred_countries.length - 2} more`}
+                        {pathway.country || 'Not specified'}
                       </div>
                     </div>
                     <div className="bg-secondary-50 rounded-lg p-3">
                       <div className="text-sm text-secondary-600 mb-1">Field of Study</div>
                       <div className="text-sm font-medium text-secondary-900">
-                        {pathway.profile?.preferred_fields_of_study?.[0] || 'Not specified'}
+                        {pathway.course || 'Not specified'}
+                      </div>
+                    </div>
+                    <div className="bg-secondary-50 rounded-lg p-3">
+                      <div className="text-sm text-secondary-600 mb-1">Academic Level</div>
+                      <div className="text-sm font-medium text-secondary-900">
+                        {pathway.academicLevel || 'Not specified'}
                       </div>
                     </div>
                     <div className="bg-secondary-50 rounded-lg p-3">

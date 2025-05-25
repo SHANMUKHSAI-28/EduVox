@@ -114,14 +114,12 @@ const MyStudyAbroadPath = () => {
         },
         nationality: profile.nationality,
         fullName: profile.full_name
-      };
-
-      const generatedPathway = await studyAbroadService.generatePathway(pathwayData);
+      };      const generatedPathway = await studyAbroadService.generatePathway(pathwayData);
       setPathway(generatedPathway);
       
       setAlert({
         type: 'success',
-        message: 'Your personalized study abroad path has been generated based on your profile!'
+        message: 'Your study abroad pathway has been updated with your latest profile information!'
       });
     } catch (error) {
       console.error('Error generating pathway:', error);
@@ -493,7 +491,7 @@ const MyStudyAbroadPath = () => {
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-gray-600">Total Duration</span>
-                    <span className="font-bold text-blue-600">{pathway.timeline.totalDuration}</span>
+                    <span className="font-bold text-blue-600">{pathway.timeline?.totalDuration || 'Not specified'}</span>
                   </div>
                 </div>
                 <div className="space-y-3">

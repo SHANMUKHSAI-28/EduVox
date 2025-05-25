@@ -135,23 +135,21 @@ const StudyAbroadWidget = () => {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        {/* Stats */}        <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="text-center">
             <div className="text-lg font-semibold text-green-600">
-              {activePathway.steps.filter(s => s.status === 'completed').length}
+              {activePathway.steps?.filter(s => s.status === 'completed').length || 0}
             </div>
             <div className="text-xs text-gray-500">Completed</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-semibold text-yellow-600">
-              {activePathway.steps.filter(s => s.status === 'in-progress').length}
+              {activePathway.steps?.filter(s => s.status === 'in-progress').length || 0}
             </div>
             <div className="text-xs text-gray-500">In Progress</div>
-          </div>
-          <div className="text-center">
+          </div>          <div className="text-center">
             <div className="text-lg font-semibold text-gray-500">
-              {activePathway.steps.filter(s => s.status === 'pending').length}
+              {activePathway.steps?.filter(s => s.status === 'pending').length || 0}
             </div>
             <div className="text-xs text-gray-500">Pending</div>
           </div>

@@ -438,18 +438,16 @@ const UniGuidePro = () => {
                   <ProgressBar 
                     now={getProgressPercentage()} 
                     label={`${Math.round(getProgressPercentage())}%`}
-                    className="mb-3"
-                  />
+                    className="mb-3"                  />
                   <p><strong>Course:</strong> {pathway.course}</p>
                   <p><strong>Academic Level:</strong> {pathway.academicLevel}</p>
-                  <p><strong>Estimated Timeline:</strong> {pathway.timeline.totalDuration}</p>
-                </Col>
-                <Col md={4}>
+                  <p><strong>Estimated Timeline:</strong> {pathway.timeline?.totalDuration || 'Not specified'}</p>
+                </Col>                <Col md={4}>
                   <h6>Quick Stats</h6>
-                  <p><strong>Total Steps:</strong> {pathway.steps.length}</p>
-                  <p><strong>Completed:</strong> {pathway.steps.filter(s => s.status === 'completed').length}</p>
-                  <p><strong>In Progress:</strong> {pathway.steps.filter(s => s.status === 'in-progress').length}</p>
-                  <p><strong>Pending:</strong> {pathway.steps.filter(s => s.status === 'pending').length}</p>
+                  <p><strong>Total Steps:</strong> {pathway.steps?.length || 0}</p>
+                  <p><strong>Completed:</strong> {pathway.steps?.filter(s => s.status === 'completed').length || 0}</p>
+                  <p><strong>In Progress:</strong> {pathway.steps?.filter(s => s.status === 'in-progress').length || 0}</p>
+                  <p><strong>Pending:</strong> {pathway.steps?.filter(s => s.status === 'pending').length || 0}</p>
                 </Col>
               </Row>
             </Card.Body>
@@ -459,10 +457,9 @@ const UniGuidePro = () => {
           <Card className="mb-4">
             <Card.Header>
               <h5>Step-by-Step Roadmap</h5>
-            </Card.Header>
-            <Card.Body>
+            </Card.Header>            <Card.Body>
               <Accordion defaultActiveKey="0">
-                {pathway.steps.map((step, index) => (
+                {pathway.steps?.map((step, index) => (
                   <Accordion.Item eventKey={index.toString()} key={step.step}>
                     <Accordion.Header>
                       <div className="d-flex align-items-center w-100">
@@ -478,7 +475,7 @@ const UniGuidePro = () => {
                       <p>{step.description}</p>
                       <h6>Tasks:</h6>
                       <ul>
-                        {step.tasks.map((task, taskIndex) => (
+                        {step.tasks?.map((task, taskIndex) => (
                           <li key={taskIndex}>{task}</li>
                         ))}
                       </ul>
@@ -496,7 +493,7 @@ const UniGuidePro = () => {
                       </div>
                     </Accordion.Body>
                   </Accordion.Item>
-                ))}
+                )) || []}
               </Accordion>
             </Card.Body>
           </Card>
@@ -510,11 +507,10 @@ const UniGuidePro = () => {
                     <FaMoneyBillWave className="mr-2" />
                     Cost Breakdown
                   </h5>
-                </Card.Header>
-                <Card.Body>
-                  <p><strong>Tuition:</strong> {pathway.costs.tuition.currency} {pathway.costs.tuition.min.toLocaleString()} - {pathway.costs.tuition.max.toLocaleString()}</p>
-                  <p><strong>Living Expenses:</strong> {pathway.costs.living.currency} {pathway.costs.living.min.toLocaleString()} - {pathway.costs.living.max.toLocaleString()}</p>
-                  <p><strong>Total Estimated:</strong> {pathway.costs.total.currency} {pathway.costs.total.min.toLocaleString()} - {pathway.costs.total.max.toLocaleString()}</p>
+                </Card.Header>                <Card.Body>
+                  <p><strong>Tuition:</strong> {pathway.costs?.tuition ? `${pathway.costs.tuition.currency} ${pathway.costs.tuition.min?.toLocaleString()} - ${pathway.costs.tuition.max?.toLocaleString()}` : 'Not available'}</p>
+                  <p><strong>Living Expenses:</strong> {pathway.costs?.living ? `${pathway.costs.living.currency} ${pathway.costs.living.min?.toLocaleString()} - ${pathway.costs.living.max?.toLocaleString()}` : 'Not available'}</p>
+                  <p><strong>Total Estimated:</strong> {pathway.costs?.total ? `${pathway.costs.total.currency} ${pathway.costs.total.min?.toLocaleString()} - ${pathway.costs.total.max?.toLocaleString()}` : 'Not available'}</p>
                   
                   {pathway.budgetAlignment && (
                     <Alert variant={pathway.budgetAlignment.status === 'excellent' ? 'success' : 
@@ -529,12 +525,11 @@ const UniGuidePro = () => {
               <Card className="mb-4">
                 <Card.Header>
                   <h5>Visa Information</h5>
-                </Card.Header>
-                <Card.Body>
-                  <p><strong>Visa Type:</strong> {pathway.visaInfo.type}</p>
-                  <p><strong>Processing Time:</strong> {pathway.visaInfo.processingTime}</p>
-                  <p><strong>Fee:</strong> {pathway.visaInfo.fee}</p>
-                  <p><strong>Work Permissions:</strong> {pathway.visaInfo.workPermissions}</p>
+                </Card.Header>                <Card.Body>
+                  <p><strong>Visa Type:</strong> {pathway.visaInfo?.type || 'Not available'}</p>
+                  <p><strong>Processing Time:</strong> {pathway.visaInfo?.processingTime || 'Not available'}</p>
+                  <p><strong>Fee:</strong> {pathway.visaInfo?.fee || 'Not available'}</p>
+                  <p><strong>Work Permissions:</strong> {pathway.visaInfo?.workPermissions || 'Not available'}</p>
                 </Card.Body>
               </Card>
             </Col>

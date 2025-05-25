@@ -30,7 +30,10 @@ const StudyAbroadAdmin = () => {
   const [userPathways, setUserPathways] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPathway, setSelectedPathway] = useState(null);
+  const [editingPathway, setEditingPathway] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'info' });
   const [stats, setStats] = useState({
     totalPathways: 0,
@@ -127,6 +130,64 @@ const StudyAbroadAdmin = () => {
     setShowModal(true);
   };
 
+  const handleEditPathway = (pathway) => {
+    setEditingPathway(pathway);
+    setEditFormData({
+      country: pathway.country || '',
+      course: pathway.course || '',
+      academicLevel: pathway.academicLevel || '',
+      isActive: pathway.isActive || false
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdatePathway = async () => {
+    try {
+      await studyAbroadService.updateUserPathwayByAdmin(editingPathway.id, editFormData);
+      setAlert({
+        show: true,
+        message: 'Pathway updated successfully!',
+        variant: 'success'
+      });
+      setShowEditModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error updating pathway:', error);
+      setAlert({
+        show: true,
+        message: 'Failed to update pathway.',
+        variant: 'danger'
+      });
+    }
+  };  const handleEditFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleEditFormSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await studyAbroadService.updateUserPathwayByAdmin(editingPathway.id, editFormData);
+      setAlert({
+        show: true,
+        message: 'Pathway updated successfully!',
+        variant: 'success'
+      });
+      setShowEditModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error updating pathway:', error);
+      setAlert({
+        show: true,
+        message: 'Failed to update pathway.',
+        variant: 'danger'
+      });
+    }
+  };
+
   const PathwayModal = () => (
     <Modal show={showModal} onHide={() => setShowModal(false)} size="xl">
       <Modal.Header closeButton>
@@ -147,7 +208,7 @@ const StudyAbroadAdmin = () => {
               </Col>
               <Col md={6}>
                 <h6>Timeline</h6>
-                <p><strong>Total Duration:</strong> {selectedPathway.timeline.totalDuration}</p>
+                <p><strong>Total Duration:</strong> {selectedPathway.timeline?.totalDuration || 'Not specified'}</p>
                 <p><strong>Phases:</strong></p>
                 <ul>
                   {selectedPathway.timeline.phases.map((phase, index) => (
@@ -217,6 +278,77 @@ const StudyAbroadAdmin = () => {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={() => setShowModal(false)}>
+          Close
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+
+  const EditPathwayModal = () => (
+    <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title>
+          Edit Pathway: {editingPathway?.country} - {editingPathway?.course}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {editingPathway && (
+          <Form onSubmit={handleEditFormSubmit}>
+            <Row className="mb-3">
+              <Form.Group as={Col} md={6}>
+                <Form.Label>Country</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="country"
+                  value={editFormData.country}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group as={Col} md={6}>
+                <Form.Label>Course</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="course"
+                  value={editFormData.course}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </Form.Group>
+            </Row>
+
+            <Row className="mb-3">
+              <Form.Group as={Col} md={6}>
+                <Form.Label>Academic Level</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="academicLevel"
+                  value={editFormData.academicLevel}
+                  onChange={handleEditFormChange}
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group as={Col} md={6}>
+                <Form.Label>Active</Form.Label>
+                <Form.Check
+                  type="checkbox"
+                  name="isActive"
+                  checked={editFormData.isActive}
+                  onChange={handleEditFormChange}
+                />
+              </Form.Group>
+            </Row>
+
+            <Button variant="primary" type="submit">
+              Save Changes
+            </Button>
+          </Form>
+        )}
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={() => setShowEditModal(false)}>
           Close
         </Button>
       </Modal.Footer>
@@ -340,6 +472,7 @@ const StudyAbroadAdmin = () => {
                           variant="outline-warning"
                           size="sm"
                           className="mr-2"
+                          onClick={() => handleEditPathway(pathway)}
                         >
                           <FaEdit />
                         </Button>
@@ -435,6 +568,7 @@ const StudyAbroadAdmin = () => {
       </Tabs>
 
       <PathwayModal />
+      <EditPathwayModal />
     </Container>
   );
 };
