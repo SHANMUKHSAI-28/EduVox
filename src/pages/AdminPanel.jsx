@@ -7,8 +7,7 @@ import StudyAbroadAdmin from '../components/admin/StudyAbroadAdmin';
 
 const AdminPanel = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
-  const navigate = useNavigate();
-  const modules = [
+  const navigate = useNavigate();  const modules = [
     {
       id: 'dashboard',
       name: 'Dashboard',
@@ -27,6 +26,11 @@ const AdminPanel = () => {
       id: 'studyabroad',
       name: 'Study Abroad Management',
       description: 'Manage UniGuidePro pathways and user analytics'
+    },
+    {
+      id: 'pathwayscraper',
+      name: 'Pathway Scraper',
+      description: 'Generate study abroad pathways using Gemini AI'
     },
     {
       id: 'settings',

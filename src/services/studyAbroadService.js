@@ -19,7 +19,6 @@ class StudyAbroadService {
     this.pathwaysCollection = 'studyAbroadPathways';
     this.userPathwaysCollection = 'userStudyAbroadPathways';
   }
-
   /**
    * Generate or retrieve a study abroad roadmap (STATIC ONLY, AI REMOVED)
    * @param {Object} userProfile - User's academic and preference data
@@ -34,23 +33,44 @@ class StudyAbroadService {
         academicLevel
       } = userProfile;
 
+      console.log('Generating pathway for:', { userId, preferredCountry, desiredCourse, academicLevel });
+
       // Create a unique pathway ID based on preferences
       const pathwayId = this.generatePathwayId(preferredCountry, desiredCourse, academicLevel);
 
       // Check if pathway already exists
+      console.log('Checking for existing pathway:', pathwayId);
       const existingPathway = await this.getExistingPathway(pathwayId);
+      
       if (existingPathway) {
+        console.log('Found existing pathway, personalizing for user');
         // Personalize existing pathway for the user (static logic only)
         const personalizedPathway = await this.personalizePathway(existingPathway, userProfile);
         await this.saveUserPathway(userId, personalizedPathway);
-        return personalizedPathway;      }
+        return personalizedPathway;
+      }
+      
       // Always use static pathway generation
+      console.log('Creating new static pathway');
       const newPathway = await this.createStaticPathway(userProfile);
+      
+      console.log('Saving new pathway for user');
       await this.saveUserPathway(userId, newPathway);
+      
       return newPathway;
     } catch (error) {
       console.error('Error generating study abroad pathway:', error);
-      throw new Error('Failed to generate study abroad pathway');
+      
+      // Try to create a basic fallback pathway
+      try {
+        console.log('Attempting fallback pathway generation');
+        const fallbackPathway = await this.createBasicFallbackPathway(userProfile);
+        await this.saveUserPathway(userProfile.userId, fallbackPathway);
+        return fallbackPathway;
+      } catch (fallbackError) {
+        console.error('Fallback pathway generation also failed:', fallbackError);
+        throw new Error('Failed to generate study abroad pathway');
+      }
     }
   }
 
@@ -79,7 +99,6 @@ class StudyAbroadService {
     // Only use static pathway logic
     return this.createStaticPathway(userProfile);
   }
-
   /**
    * Create a static study abroad pathway based on user profile
    */
@@ -94,48 +113,56 @@ class StudyAbroadService {
     // Generate pathway ID
     const pathwayId = this.generatePathwayId(preferredCountry, desiredCourse, academicLevel);
 
-    // Create comprehensive pathway using static data
-    const pathway = {
-      id: pathwayId,
-      country: preferredCountry,
-      course: desiredCourse,
-      academicLevel: academicLevel,
-      createdAt: new Date().toISOString(),
-      type: 'static',
-      
-      // Generate step-by-step pathway
-      steps: await this.generatePathwaySteps(userProfile),
-      
-      // Generate timeline
-      timeline: this.generateTimeline(academicLevel),
-      
-      // Generate requirements
-      requirements: await this.generateRequirements(preferredCountry, desiredCourse),
-      
-      // Get cost breakdown
-      costs: await this.generateCostBreakdown(preferredCountry, academicLevel),
-      
-      // Get university recommendations
-      universities: await this.getRecommendedUniversities(preferredCountry, desiredCourse),
-      
-      // Get visa information
-      visa: await this.getVisaInformation(preferredCountry),
-      
-      // Get career prospects
-      career: await this.getCareerProspects(desiredCourse, preferredCountry),
-      
-      // Get scholarship opportunities
-      scholarships: await this.getScholarshipOpportunities(preferredCountry, desiredCourse),
-      
-      // Get country-specific tips
-      tips: this.generateCountrySpecificTips(preferredCountry),
-      
-      // Additional metadata
-      generatedBy: 'Static Logic',
-      lastUpdated: new Date().toISOString()
-    };
+    try {
+      // Generate all pathway components and await them properly
+      const [
+        steps,
+        requirements,
+        costs,
+        universities,
+        visa,
+        career,
+        scholarships
+      ] = await Promise.all([
+        this.generatePathwaySteps(userProfile),
+        this.generateRequirements(preferredCountry, desiredCourse),
+        this.generateCostBreakdown(preferredCountry, academicLevel),
+        this.getRecommendedUniversities(preferredCountry, desiredCourse),
+        this.getVisaInformation(preferredCountry),
+        this.getCareerProspects(desiredCourse, preferredCountry),
+        this.getScholarshipOpportunities(preferredCountry, desiredCourse)
+      ]);
 
-    return pathway;
+      // Create comprehensive pathway using static data
+      const pathway = {
+        id: pathwayId,
+        country: preferredCountry,
+        course: desiredCourse,
+        academicLevel: academicLevel,
+        createdAt: new Date().toISOString(),
+        type: 'static',
+        
+        // All resolved values (no Promises)
+        steps,
+        timeline: this.generateTimeline(academicLevel),
+        requirements,
+        costs,
+        universities,
+        visa,
+        career,
+        scholarships,
+        tips: this.generateCountrySpecificTips(preferredCountry),
+        
+        // Additional metadata
+        generatedBy: 'Static Logic',
+        lastUpdated: new Date().toISOString()
+      };
+
+      return pathway;
+    } catch (error) {
+      console.error('Error creating static pathway:', error);
+      throw new Error('Failed to create static pathway');
+    }
   }
 
   /**
@@ -900,6 +927,35 @@ class StudyAbroadService {
       throw error;
     }
   }
+  /**
+   * Remove undefined fields and promises from an object to prevent Firestore errors
+   */
+  sanitizeDataForFirestore(obj) {
+    if (obj === null || obj === undefined) {
+      return null;
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.sanitizeDataForFirestore(item)).filter(item => item !== undefined);
+    }
+    
+    if (typeof obj === 'object' && obj.constructor === Object) {
+      const sanitized = {};
+      for (const [key, value] of Object.entries(obj)) {
+        // Skip undefined values, functions, and promises
+        if (value !== undefined && typeof value !== 'function' && !(value instanceof Promise)) {
+          const sanitizedValue = this.sanitizeDataForFirestore(value);
+          if (sanitizedValue !== undefined) {
+            sanitized[key] = sanitizedValue;
+          }
+        }
+      }
+      return sanitized;
+    }
+    
+    // Return primitive values as-is (except undefined)
+    return obj;
+  }
 
   /**
    * Save user-specific pathway
@@ -907,15 +963,19 @@ class StudyAbroadService {
   async saveUserPathway(userId, pathway) {
     try {
       const userPathwayId = `${userId}_${pathway.id}`;
-      await setDoc(doc(db, this.userPathwaysCollection, userPathwayId), {
+      
+      // Sanitize the pathway data before saving
+      const sanitizedPathway = this.sanitizeDataForFirestore({
         ...pathway,
         userId,
         createdAt: new Date().toISOString()
       });
+      
+      await setDoc(doc(db, this.userPathwaysCollection, userPathwayId), sanitizedPathway);
       return true;
     } catch (error) {
       console.error('Error saving user pathway:', error);
-      throw error;
+      throw new Error('Failed to save pathway');
     }
   }
   /**
@@ -1919,13 +1979,236 @@ class StudyAbroadService {
         batch.push(
           updateDoc(doc(db, this.pathwaysCollection, templateId), updateData)
         );
-      }
-
-      await Promise.all(batch);
+      }      await Promise.all(batch);
       return true;
     } catch (error) {
       console.error('Error bulk updating templates:', error);
       throw new Error('Failed to bulk update templates');
+    }
+  }
+
+  /**
+   * Create a basic fallback pathway when normal generation fails
+   * This provides a minimal but functional pathway structure
+   */
+  async createBasicFallbackPathway(userProfile) {
+    try {
+      const {
+        preferredCountry = 'United States',
+        desiredCourse = 'Computer Science',
+        academicLevel = 'graduate',
+        userId
+      } = userProfile;
+
+      console.log('Creating basic fallback pathway for:', { preferredCountry, desiredCourse, academicLevel });
+
+      // Generate a simple pathway ID
+      const pathwayId = this.generatePathwayId(preferredCountry, desiredCourse, academicLevel);
+
+      // Create basic steps that don't rely on external data
+      const basicSteps = [
+        {
+          step: 1,
+          title: "Academic Preparation",
+          description: "Prepare your academic credentials",
+          duration: "6-12 months",
+          tasks: [
+            "Maintain/improve your GPA",
+            "Complete required prerequisite courses",
+            "Gather academic transcripts"
+          ],
+          status: "pending"
+        },
+        {
+          step: 2,
+          title: "Language Proficiency",
+          description: "Meet English language requirements",
+          duration: "3-6 months",
+          tasks: [
+            "Take IELTS or TOEFL test",
+            "Achieve required minimum scores",
+            "Consider language preparation courses if needed"
+          ],
+          status: "pending"
+        },
+        {
+          step: 3,
+          title: "Standardized Tests",
+          description: "Complete required standardized tests",
+          duration: "3-6 months",
+          tasks: [
+            academicLevel === 'graduate' ? "Take GRE/GMAT if required" : "Complete SAT/ACT if required",
+            "Prepare thoroughly for the exam",
+            "Schedule test dates well in advance"
+          ],
+          status: "pending"
+        },
+        {
+          step: 4,
+          title: "University Research",
+          description: "Research and select universities",
+          duration: "2-3 months",
+          tasks: [
+            "Research universities in " + preferredCountry,
+            "Check admission requirements for " + desiredCourse,
+            "Create a list of target universities",
+            "Contact admissions offices"
+          ],
+          status: "pending"
+        },
+        {
+          step: 5,
+          title: "Application Preparation",
+          description: "Prepare application materials",
+          duration: "3-4 months",
+          tasks: [
+            "Write statement of purpose",
+            "Prepare resume/CV",
+            "Collect recommendation letters",
+            "Prepare portfolio if required"
+          ],
+          status: "pending"
+        },
+        {
+          step: 6,
+          title: "Application Submission",
+          description: "Submit university applications",
+          duration: "1-2 months",
+          tasks: [
+            "Complete online applications",
+            "Submit all required documents",
+            "Pay application fees",
+            "Track application status"
+          ],
+          status: "pending"
+        },
+        {
+          step: 7,
+          title: "Financial Planning",
+          description: "Arrange funding and financial documents",
+          duration: "2-4 months",
+          tasks: [
+            "Research scholarship opportunities",
+            "Apply for education loans if needed",
+            "Prepare financial documentation",
+            "Plan for living expenses"
+          ],
+          status: "pending"
+        },
+        {
+          step: 8,
+          title: "Visa Application",
+          description: "Apply for student visa",
+          duration: "2-3 months",
+          tasks: [
+            "Gather required visa documents",
+            "Schedule visa interview",
+            "Prepare for visa interview",
+            "Submit visa application"
+          ],
+          status: "pending"
+        },
+        {
+          step: 9,
+          title: "Pre-Departure",
+          description: "Final preparations before departure",
+          duration: "1-2 months",
+          tasks: [
+            "Book accommodation",
+            "Arrange airport pickup",
+            "Pack essentials for study abroad",
+            "Complete orientation programs"
+          ],
+          status: "pending"
+        }
+      ];
+
+      // Create basic pathway object
+      const basicPathway = {
+        id: pathwayId,
+        country: preferredCountry,
+        course: desiredCourse,
+        academicLevel: academicLevel,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        type: 'basic_fallback',
+        generatedBy: 'Fallback Logic',
+        
+        steps: basicSteps,
+        
+        // Basic timeline
+        timeline: {
+          totalDuration: "18-24 months",
+          phases: [
+            { phase: "Preparation", duration: "12-18 months", description: "Academic and test preparation" },
+            { phase: "Application", duration: "6-8 months", description: "University applications and admissions" },
+            { phase: "Pre-departure", duration: "2-3 months", description: "Visa and travel arrangements" }
+          ]
+        },
+
+        // Basic cost information
+        costs: {
+          total: academicLevel === 'graduate' ? 50000 : 40000,
+          breakdown: {
+            tuition: academicLevel === 'graduate' ? 35000 : 28000,
+            living: 12000,
+            other: 3000
+          },
+          currency: 'USD'
+        },
+
+        // Basic requirements
+        requirements: {
+          academic: {
+            gpa: academicLevel === 'graduate' ? 3.0 : 2.5,
+            degree: academicLevel === 'graduate' ? "Bachelor's degree" : "High school diploma"
+          },
+          language: {
+            ielts: 6.5,
+            toefl: 90
+          },
+          standardizedTests: academicLevel === 'graduate' ? ["GRE"] : ["SAT"],
+          documents: [
+            "Academic transcripts",
+            "Statement of purpose",
+            "Recommendation letters",
+            "Passport",
+            "Financial documents"
+          ]
+        },
+
+        // Basic visa information
+        visa: {
+          type: "Student Visa",
+          processingTime: "2-8 weeks",
+          requirements: [
+            "Valid passport",
+            "University acceptance letter",
+            "Financial proof",
+            "Visa application form"
+          ]
+        },
+
+        // Basic tips
+        tips: [
+          "Start your preparation at least 18 months before intended start date",
+          "Research multiple universities to increase your chances",
+          "Keep all documents organized and make copies",
+          "Budget for unexpected expenses",
+          "Connect with current students or alumni for insights"
+        ],
+
+        // Metadata
+        isFallback: true,
+        lastUpdated: new Date().toISOString()
+      };
+
+      console.log('✅ Basic fallback pathway created successfully');
+      return basicPathway;
+
+    } catch (error) {
+      console.error('Error creating basic fallback pathway:', error);
+      throw new Error('Failed to create even basic fallback pathway');
     }
   }
 }
