@@ -107,7 +107,6 @@ const UniGuidePro = () => {
       setLoading(false);
     }
   };
-
   const updateStepStatus = async (stepNumber, status, notes = '') => {
     try {
       await studyAbroadService.updateStepStatus(
@@ -118,8 +117,9 @@ const UniGuidePro = () => {
         notes
       );
       
-      // Update local state
-      const updatedSteps = pathway.steps.map(step => {
+      // Update local state - handle both old and new pathway data structures
+      const currentSteps = pathway.data?.steps || pathway.steps || [];
+      const updatedSteps = currentSteps.map(step => {
         if (step.step === stepNumber) {
           return {
             ...step,
@@ -131,10 +131,18 @@ const UniGuidePro = () => {
         return step;
       });
 
-      setPathway({
-        ...pathway,
-        steps: updatedSteps
-      });
+      // Update pathway with appropriate structure
+      if (pathway.data) {
+        setPathway({
+          ...pathway,
+          data: { ...pathway.data, steps: updatedSteps }
+        });
+      } else {
+        setPathway({
+          ...pathway,
+          steps: updatedSteps
+        });
+      }
 
       setAlert({
         show: true,
@@ -150,11 +158,15 @@ const UniGuidePro = () => {
       });
     }
   };
-
   const getProgressPercentage = () => {
-    if (!pathway || !pathway.steps) return 0;
-    const completedSteps = pathway.steps.filter(step => step.status === 'completed').length;
-    return (completedSteps / pathway.steps.length) * 100;
+    if (!pathway) return 0;
+    
+    // Handle both old and new pathway data structures
+    const steps = pathway.data?.steps || pathway.steps || [];
+    if (steps.length === 0) return 0;
+    
+    const completedSteps = steps.filter(step => step.status === 'completed').length;
+    return (completedSteps / steps.length) * 100;
   };
 
   const getStepVariant = (status) => {
@@ -441,13 +453,16 @@ const UniGuidePro = () => {
                     className="mb-3"                  />
                   <p><strong>Course:</strong> {pathway.course}</p>
                   <p><strong>Academic Level:</strong> {pathway.academicLevel}</p>
-                  <p><strong>Estimated Timeline:</strong> {pathway.timeline?.totalDuration || 'Not specified'}</p>
-                </Col>                <Col md={4}>
-                  <h6>Quick Stats</h6>
-                  <p><strong>Total Steps:</strong> {pathway.steps?.length || 0}</p>
-                  <p><strong>Completed:</strong> {pathway.steps?.filter(s => s.status === 'completed').length || 0}</p>
-                  <p><strong>In Progress:</strong> {pathway.steps?.filter(s => s.status === 'in-progress').length || 0}</p>
-                  <p><strong>Pending:</strong> {pathway.steps?.filter(s => s.status === 'pending').length || 0}</p>
+                  <p><strong>Estimated Timeline:</strong> {
+                    pathway.data?.timeline?.totalDuration || 
+                    pathway.timeline?.totalDuration || 
+                    'Not specified'
+                  }</p>
+                </Col>                <Col md={4}>                  <h6>Quick Stats</h6>
+                  <p><strong>Total Steps:</strong> {(pathway.data?.steps || pathway.steps || []).length}</p>
+                  <p><strong>Completed:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'completed').length}</p>
+                  <p><strong>In Progress:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'in-progress').length}</p>
+                  <p><strong>Pending:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'pending').length}</p>
                 </Col>
               </Row>
             </Card.Body>
@@ -459,7 +474,7 @@ const UniGuidePro = () => {
               <h5>Step-by-Step Roadmap</h5>
             </Card.Header>            <Card.Body>
               <Accordion defaultActiveKey="0">
-                {pathway.steps?.map((step, index) => (
+                {(pathway.data?.steps || pathway.steps || []).map((step, index) => (
                   <Accordion.Item eventKey={index.toString()} key={step.step}>
                     <Accordion.Header>
                       <div className="d-flex align-items-center w-100">
@@ -490,10 +505,9 @@ const UniGuidePro = () => {
                         >
                           View Details & Update Status
                         </Button>
-                      </div>
-                    </Accordion.Body>
+                      </div>                    </Accordion.Body>
                   </Accordion.Item>
-                )) || []}
+                ))}
               </Accordion>
             </Card.Body>
           </Card>
@@ -508,9 +522,34 @@ const UniGuidePro = () => {
                     Cost Breakdown
                   </h5>
                 </Card.Header>                <Card.Body>
-                  <p><strong>Tuition:</strong> {pathway.costs?.tuition ? `${pathway.costs.tuition.currency} ${pathway.costs.tuition.min?.toLocaleString()} - ${pathway.costs.tuition.max?.toLocaleString()}` : 'Not available'}</p>
-                  <p><strong>Living Expenses:</strong> {pathway.costs?.living ? `${pathway.costs.living.currency} ${pathway.costs.living.min?.toLocaleString()} - ${pathway.costs.living.max?.toLocaleString()}` : 'Not available'}</p>
-                  <p><strong>Total Estimated:</strong> {pathway.costs?.total ? `${pathway.costs.total.currency} ${pathway.costs.total.min?.toLocaleString()} - ${pathway.costs.total.max?.toLocaleString()}` : 'Not available'}</p>
+                  {/* Handle both old and new pathway data structures for costs */}
+                  {(() => {
+                    const costs = pathway.data?.costs || pathway.costs;
+                    if (!costs) {
+                      return <p>Cost information not available</p>;
+                    }
+                    
+                    // Handle new AI scraping data structure
+                    if (typeof costs.tuition === 'string') {
+                      return (
+                        <>
+                          <p><strong>Tuition:</strong> {costs.tuition || 'Not available'}</p>
+                          <p><strong>Living Expenses:</strong> {costs.living || 'Not available'}</p>
+                          <p><strong>Insurance:</strong> {costs.insurance || 'Not available'}</p>
+                          <p><strong>Other Expenses:</strong> {costs.other || 'Not available'}</p>
+                        </>
+                      );
+                    }
+                    
+                    // Handle old data structure
+                    return (
+                      <>
+                        <p><strong>Tuition:</strong> {costs.tuition ? `${costs.tuition.currency} ${costs.tuition.min?.toLocaleString()} - ${costs.tuition.max?.toLocaleString()}` : 'Not available'}</p>
+                        <p><strong>Living Expenses:</strong> {costs.living ? `${costs.living.currency} ${costs.living.min?.toLocaleString()} - ${costs.living.max?.toLocaleString()}` : 'Not available'}</p>
+                        <p><strong>Total Estimated:</strong> {costs.total ? `${costs.total.currency} ${costs.total.min?.toLocaleString()} - ${costs.total.max?.toLocaleString()}` : 'Not available'}</p>
+                      </>
+                    );
+                  })()}
                   
                   {pathway.budgetAlignment && (
                     <Alert variant={pathway.budgetAlignment.status === 'excellent' ? 'success' : 
@@ -526,10 +565,22 @@ const UniGuidePro = () => {
                 <Card.Header>
                   <h5>Visa Information</h5>
                 </Card.Header>                <Card.Body>
-                  <p><strong>Visa Type:</strong> {pathway.visaInfo?.type || 'Not available'}</p>
-                  <p><strong>Processing Time:</strong> {pathway.visaInfo?.processingTime || 'Not available'}</p>
-                  <p><strong>Fee:</strong> {pathway.visaInfo?.fee || 'Not available'}</p>
-                  <p><strong>Work Permissions:</strong> {pathway.visaInfo?.workPermissions || 'Not available'}</p>
+                  {/* Handle both old and new pathway data structures for visa */}
+                  {(() => {
+                    const visaInfo = pathway.data?.visaRequirements || pathway.visaInfo || pathway.visa;
+                    if (!visaInfo) {
+                      return <p>Visa information not available</p>;
+                    }
+                    
+                    return (
+                      <>
+                        <p><strong>Visa Type:</strong> {visaInfo.type || 'Not available'}</p>
+                        <p><strong>Processing Time:</strong> {visaInfo.processingTime || 'Not available'}</p>
+                        <p><strong>Fee:</strong> {visaInfo.fee || 'Not available'}</p>
+                        <p><strong>Work Permissions:</strong> {visaInfo.workPermissions || 'Not available'}</p>
+                      </>
+                    );
+                  })()}
                 </Card.Body>
               </Card>
             </Col>
@@ -541,18 +592,29 @@ const UniGuidePro = () => {
               <Card className="mb-4">
                 <Card.Header>
                   <h5>Recommended Universities</h5>
-                </Card.Header>
-                <Card.Body>
-                  {pathway.universities.slice(0, 5).map((university, index) => (
-                    <div key={index} className="mb-2">
-                      <strong>{university.name}</strong>
-                      {university.ranking && <Badge variant="primary" className="ml-2">#{university.ranking}</Badge>}
-                      <br />
-                      <small className="text-muted">
-                        {university.location} • {university.tuition}
-                      </small>
-                    </div>
-                  ))}
+                </Card.Header>                <Card.Body>
+                  {/* Handle both old and new pathway data structures for universities */}
+                  {(() => {
+                    const universities = pathway.data?.universities || pathway.universities || [];
+                    if (universities.length === 0) {
+                      return <p>No university recommendations available</p>;
+                    }
+                    
+                    return universities.slice(0, 5).map((university, index) => (
+                      <div key={index} className="mb-2">
+                        <strong>{university.name}</strong>
+                        {university.ranking && (
+                          <Badge variant="primary" className="ml-2">
+                            {university.ranking}
+                          </Badge>
+                        )}
+                        <br />
+                        <small className="text-muted">
+                          {university.location} • {university.tuition || university.tuitionFee}
+                        </small>
+                      </div>
+                    ));
+                  })()}
                 </Card.Body>
               </Card>
             </Col>
@@ -560,17 +622,29 @@ const UniGuidePro = () => {
               <Card className="mb-4">
                 <Card.Header>
                   <h5>Scholarship Opportunities</h5>
-                </Card.Header>
-                <Card.Body>
-                  {pathway.scholarships.slice(0, 3).map((scholarship, index) => (
-                    <div key={index} className="mb-2">
-                      <strong>{scholarship.name}</strong>
-                      <br />
-                      <small className="text-muted">
-                        {scholarship.amount} • {scholarship.eligibility}
-                      </small>
-                    </div>
-                  ))}
+                </Card.Header>                <Card.Body>
+                  {/* Handle both old and new pathway data structures for scholarships */}
+                  {(() => {
+                    const scholarships = pathway.data?.scholarships || pathway.scholarships || [];
+                    if (scholarships.length === 0) {
+                      return <p>No scholarship opportunities available</p>;
+                    }
+                    
+                    return scholarships.slice(0, 3).map((scholarship, index) => (
+                      <div key={index} className="mb-2">
+                        <strong>{scholarship.name}</strong>
+                        <br />
+                        <small className="text-muted">
+                          {scholarship.amount} • {scholarship.eligibility}
+                        </small>
+                        {scholarship.deadline && (
+                          <small className="text-info d-block">
+                            Deadline: {scholarship.deadline}
+                          </small>
+                        )}
+                      </div>
+                    ));
+                  })()}
                 </Card.Body>
               </Card>
             </Col>
@@ -580,12 +654,19 @@ const UniGuidePro = () => {
           <Card className="mb-4">
             <Card.Header>
               <h5>Country-Specific Tips for {pathway.country}</h5>
-            </Card.Header>
-            <Card.Body>
+            </Card.Header>            <Card.Body>
               <ul>
-                {pathway.tips.map((tip, index) => (
-                  <li key={index}>{tip}</li>
-                ))}
+                {/* Handle both old and new pathway data structures for tips */}
+                {(() => {
+                  const tips = pathway.data?.tips || pathway.tips || [];
+                  if (tips.length === 0) {
+                    return <li>No specific tips available for this country</li>;
+                  }
+                  
+                  return tips.map((tip, index) => (
+                    <li key={index}>{tip}</li>
+                  ));
+                })()}
               </ul>
             </Card.Body>
           </Card>

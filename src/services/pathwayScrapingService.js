@@ -58,99 +58,262 @@ class PathwayScrapingService {  constructor() {
       // Validate profile data
       if (!profile.country || !profile.course || !profile.academicLevel) {
         throw new Error('Profile is missing required fields: country, course, or academicLevel');
-      }
+      }      const prompt = `
+You are an expert study abroad consultant specializing in MS programs. Create a comprehensive, personalized study abroad pathway for a ${profile.nationality} student.
 
-      const prompt = `
-Generate a comprehensive study abroad pathway for:
-- Country: ${profile.country}
-- Course: ${profile.course}
+**STUDENT PROFILE:**
+- Target Country: ${profile.country}
+- Field of Study: ${profile.course} (Master's degree)
 - Academic Level: ${profile.academicLevel}
-- Budget Range: $${profile.budgetRange.min} - $${profile.budgetRange.max}
+- Budget Range: $${profile.budgetRange.min} - $${profile.budgetRange.max} USD
 - Nationality: ${profile.nationality}
 
-Please provide a detailed JSON response with:
-1. University recommendations (top 5-8 universities)
-2. Application timeline (12-month plan)
-3. Required documents
-4. Visa requirements
-5. Scholarship opportunities
-6. Cost breakdown
-7. Language requirements
-8. Admission requirements
-9. Career prospects
-10. Living information
+**INSTRUCTIONS:**
+Provide detailed, actionable recommendations covering all aspects of studying abroad. Be specific with numbers, dates, and requirements. Consider the student's nationality for visa requirements and cultural adaptation.
 
-Format as valid JSON with these exact keys:
+**REQUIRED OUTPUT FORMAT (Valid JSON):**
 {
   "universities": [
     {
       "name": "University Name",
-      "ranking": "QS/Times ranking",
+      "ranking": "QS World Ranking position",
       "tuitionFee": "Annual fee in USD",
       "location": "City, State/Province",
       "requirements": {
-        "gpa": "minimum GPA",
-        "ielts": "minimum IELTS",
-        "toefl": "minimum TOEFL",
-        "gre": "required/not required",
-        "gmat": "required/not required"
+        "gpa": "Minimum GPA on 4.0 scale",
+        "ielts": "Minimum IELTS score",
+        "toefl": "Minimum TOEFL score",
+        "gre": "Required GRE score or 'Not Required'",
+        "gmat": "Required GMAT score or 'Not Required'",
+        "workExperience": "Required years or 'Not Required'"
       },
-      "specialties": ["specialty1", "specialty2"],
-      "applicationDeadline": "deadline info"
+      "specialties": ["Program specialization 1", "Program specialization 2"],
+      "applicationDeadline": "Application deadline",
+      "programDuration": "Duration in months",
+      "acceptanceRate": "Acceptance rate percentage"
     }
   ],
   "timeline": [
     {
-      "month": "Month name",
-      "tasks": ["task1", "task2", "task3"],
-      "priority": "high/medium/low"
+      "month": "Month name (e.g., January 2024)",
+      "timeFromStart": "Months before application deadline",
+      "tasks": [
+        "Specific task 1",
+        "Specific task 2", 
+        "Specific task 3"
+      ],
+      "priority": "Critical/High/Medium/Low",
+      "documents": "Documents to prepare this month"
     }
   ],
   "documents": [
     {
       "name": "Document name",
-      "description": "What it is and how to get it",
-      "required": true/false
+      "description": "Detailed description and how to obtain",
+      "required": true,
+      "processingTime": "Time needed to obtain",
+      "cost": "Cost in USD",
+      "tips": "Important tips for preparation"
     }
   ],
   "visaRequirements": {
-    "type": "visa type",
-    "processingTime": "time in weeks",
-    "fee": "fee in USD",
-    "requirements": ["req1", "req2"]
+    "type": "Student visa type (e.g., F-1, Study Permit)",
+    "processingTime": "Processing time in weeks",
+    "fee": "Visa fee in USD",
+    "requirements": [
+      "Specific requirement 1",
+      "Specific requirement 2"
+    ],
+    "financialProof": "Required amount to show",
+    "medicalRequirements": "Medical exam requirements",
+    "biometrics": "Biometric requirements",
+    "interview": "Interview requirements and tips"
   },
   "scholarships": [
     {
       "name": "Scholarship name",
-      "amount": "amount or percentage",
-      "eligibility": "who can apply",
-      "deadline": "application deadline"
+      "amount": "Amount in USD or percentage",
+      "eligibility": "Detailed eligibility criteria",
+      "deadline": "Application deadline",
+      "applicationProcess": "How to apply",
+      "competitiveness": "How competitive (High/Medium/Low)",
+      "renewability": "Renewable conditions"
     }
   ],
   "costs": {
-    "tuition": "annual tuition range",
-    "living": "monthly living costs",
-    "insurance": "health insurance cost",
-    "other": "other expenses"
+    "tuition": {
+      "annual": "Annual tuition in USD",
+      "total": "Total program cost"
+    },
+    "living": {
+      "monthly": "Monthly living costs",
+      "accommodation": "Monthly accommodation cost",
+      "food": "Monthly food cost",
+      "transportation": "Monthly transport cost",
+      "utilities": "Monthly utilities cost",
+      "personal": "Monthly personal expenses"
+    },
+    "oneTime": {
+      "applicationFees": "Total application fees",
+      "visaFees": "Visa and related fees",
+      "airfare": "One-way airfare estimate",
+      "initialSetup": "Initial setup costs"
+    },
+    "insurance": "Health insurance annual cost",
+    "books": "Books and supplies annual cost",
+    "totalEstimate": "Total estimated cost for program"
   },
   "languageRequirements": {
-    "ielts": "minimum score",
-    "toefl": "minimum score",
-    "alternatives": ["other accepted tests"]
+    "ielts": {
+      "overall": "Minimum overall score",
+      "individual": "Minimum individual band scores",
+      "validity": "Score validity period"
+    },
+    "toefl": {
+      "overall": "Minimum overall score",
+      "individual": "Minimum section scores",
+      "validity": "Score validity period"
+    },
+    "alternatives": ["PTE", "Duolingo", "Cambridge"],
+    "preparationTips": [
+      "Preparation tip 1",
+      "Preparation tip 2"
+    ],
+    "exemptions": "Conditions for exemption"
+  },
+  "admissionRequirements": {
+    "academic": {
+      "minimumGPA": "Minimum GPA requirement",
+      "transcriptEvaluation": "Transcript evaluation process",
+      "prerequisiteCourses": ["Required prerequisite courses"]
+    },
+    "standardizedTests": {
+      "required": ["List of required tests"],
+      "recommended": ["List of recommended tests"],
+      "scoreSending": "Score sending requirements"
+    },
+    "essays": {
+      "required": ["Types of essays required"],
+      "wordLimits": "Word limit guidelines",
+      "topics": ["Common essay topics"]
+    },
+    "recommendations": {
+      "count": "Number of letters required",
+      "sources": ["Academic", "Professional"],
+      "guidelines": "Guidelines for recommenders"
+    },
+    "portfolio": "Portfolio requirements if applicable"
   },
   "careerProspects": {
-    "averageSalary": "salary in USD",
-    "jobMarket": "market condition",
-    "topEmployers": ["company1", "company2"]
+    "averageSalary": {
+      "entryLevel": "Entry-level salary in USD",
+      "experienced": "Experienced professional salary",
+      "topTier": "Top-tier company salary"
+    },
+    "jobMarket": {
+      "outlook": "Job market outlook",
+      "growthRate": "Industry growth rate",
+      "demand": "Demand level (High/Medium/Low)"
+    },
+    "topEmployers": [
+      "Top employer 1",
+      "Top employer 2",
+      "Top employer 3"
+    ],
+    "jobRoles": [
+      "Common job role 1",
+      "Common job role 2",
+      "Common job role 3"
+    ],
+    "workVisa": {
+      "options": ["Work visa options after graduation"],
+      "duration": "Work permit duration",
+      "pathToPR": "Path to permanent residence"
+    },
+    "networkingTips": [
+      "Networking tip 1",
+      "Networking tip 2"
+    ]
   },
   "livingInfo": {
-    "climate": "climate description",
-    "culture": "cultural info",
-    "housing": "housing options and costs",
-    "transportation": "transport info"
+    "climate": {
+      "description": "Climate description",
+      "seasons": "Seasonal information",
+      "clothing": "Clothing recommendations"
+    },
+    "culture": {
+      "description": "Cultural highlights",
+      "diversity": "Diversity information",
+      "socialNorms": "Important social norms",
+      "festivals": "Major festivals and holidays"
+    },
+    "housing": {
+      "options": ["On-campus", "Off-campus", "Shared apartments"],
+      "costs": "Housing cost ranges",
+      "tips": "Housing search tips",
+      "contracts": "Lease information"
+    },
+    "transportation": {
+      "public": "Public transportation options",
+      "costs": "Transportation costs",
+      "studentDiscounts": "Available student discounts",
+      "cycling": "Cycling infrastructure"
+    },
+    "food": {
+      "dining": "Dining options",
+      "grocery": "Grocery shopping tips",
+      "international": "International food availability",
+      "dietary": "Dietary restriction accommodations"
+    },
+    "healthcare": {
+      "system": "Healthcare system overview",
+      "insurance": "Insurance requirements",
+      "costs": "Healthcare costs",
+      "access": "How to access healthcare"
+    },
+    "safety": {
+      "overview": "General safety information",
+      "emergencyNumbers": "Important emergency numbers",
+      "campusSafety": "Campus safety measures",
+      "tips": "Safety tips for international students"
+    },
+    "socialLife": {
+      "studentOrganizations": "Student organizations to join",
+      "events": "Cultural and social events",
+      "recreation": "Recreation and entertainment options",
+      "community": "Local community integration tips"
+    }
+  },
+  "additionalSupport": {
+    "orientation": "Orientation program information",
+    "internationalOffice": "International student office services",
+    "academicSupport": "Academic support services",
+    "counseling": "Counseling and mental health services",
+    "careerServices": "Career services available",
+    "languageSupport": "Language support programs"
+  },
+  "specialConsiderations": {
+    "covid19": "COVID-19 related requirements",
+    "culturalAdaptation": "Cultural adaptation tips for ${profile.nationality} students",
+    "homesickness": "Dealing with homesickness",
+    "financialTips": "Financial management tips",
+    "academicDifferences": "Academic system differences to expect"
   }
 }
-`;
+
+**CRITICAL REQUIREMENTS:**
+1. Provide exact, current information with specific numbers
+2. Include 6-8 top universities with complete details
+3. Create a 12-month detailed timeline starting from application prep
+4. List all required documents with processing times
+5. Include country-specific visa information for ${profile.nationality} nationals
+6. Provide realistic cost breakdowns
+7. Focus on ${profile.course} career prospects in ${profile.country}
+8. Consider cultural aspects for ${profile.nationality} students
+9. Ensure all information is actionable and specific
+10. Format as valid JSON without any markdown formatting
+
+Generate this comprehensive pathway now:`;
 
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
