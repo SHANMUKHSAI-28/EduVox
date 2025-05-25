@@ -4,6 +4,7 @@ import Button from '../components/common/Button';
 import ManageUniversities from './ManageUniversities';
 import DatabaseMaintenance from './DatabaseMaintenance';
 import StudyAbroadAdmin from '../components/admin/StudyAbroadAdmin';
+import PathwayScrapingAdmin from '../components/admin/PathwayScrapingAdmin';
 
 const AdminPanel = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -21,11 +22,15 @@ const AdminPanel = () => {
       id: 'database',
       name: 'Database Maintenance',
       description: 'Run migrations and maintain database integrity'
-    },
-    {
+    },    {
       id: 'studyabroad',
       name: 'Study Abroad Management',
       description: 'Manage UniGuidePro pathways and user analytics'
+    },
+    {
+      id: 'scraping',
+      name: 'Pathway Scraping',
+      description: 'Generate AI-powered pathways using Gemini API for all combinations'
     },
     {
       id: 'pathwayscraper',
@@ -42,9 +47,10 @@ const AdminPanel = () => {
     switch (activeModule) {
       case 'universities':
         return <ManageUniversities />;      case 'database':
-        return <DatabaseMaintenance />;
-      case 'studyabroad':
+        return <DatabaseMaintenance />;      case 'studyabroad':
         return <StudyAbroadAdmin />;
+      case 'scraping':
+        return <PathwayScrapingAdmin />;
       case 'settings':
         return (
           <div className="p-6">

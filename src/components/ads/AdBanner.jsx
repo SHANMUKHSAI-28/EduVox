@@ -48,7 +48,7 @@ const AdBanner = ({
     if (!window.adsbygoogle) {
       const script = document.createElement('script');
       script.async = true;
-      script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + 
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${import.meta.env.VITE_ADSENSE_CLIENT_ID}`;
                    import.meta.env.VITE_ADSENSE_CLIENT_ID;
       script.crossOrigin = 'anonymous';
       document.head.appendChild(script);

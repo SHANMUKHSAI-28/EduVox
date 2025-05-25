@@ -11,18 +11,18 @@ import {
   updateDoc, 
   deleteDoc 
 } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { db } from '../firebaseConfig.js';
+import pathwayScrapingService from './pathwayScrapingService.js';
 
 // Study Abroad Service for UniGuidePro Feature
 class StudyAbroadService {
   constructor() {
     this.pathwaysCollection = 'studyAbroadPathways';
     this.userPathwaysCollection = 'userStudyAbroadPathways';
-  }
-  /**
-   * Generate or retrieve a study abroad roadmap (STATIC ONLY, AI REMOVED)
+  }  /**
+   * Retrieve a pre-scraped study abroad pathway from database
    * @param {Object} userProfile - User's academic and preference data
-   * @returns {Object} - Complete study abroad pathway
+   * @returns {Object} - Complete study abroad pathway from pre-scraped database
    */
   async generatePathway(userProfile) {
     try {
@@ -30,46 +30,63 @@ class StudyAbroadService {
         userId,
         preferredCountry,
         desiredCourse,
-        academicLevel
+        academicLevel,
+        nationality = 'Indian', // Default nationality
+        budgetRange = 'medium' // Default budget range
       } = userProfile;
 
-      console.log('Generating pathway for:', { userId, preferredCountry, desiredCourse, academicLevel });
+      console.log('Fetching pre-scraped pathway for:', { 
+        userId, 
+        preferredCountry, 
+        desiredCourse, 
+        academicLevel,
+        nationality,
+        budgetRange 
+      });      // Try to get pre-scraped pathway from database
+      const preScrapedPathway = await pathwayScrapingService.findPathwayByProfile(userProfile);
 
-      // Create a unique pathway ID based on preferences
-      const pathwayId = this.generatePathwayId(preferredCountry, desiredCourse, academicLevel);
-
-      // Check if pathway already exists
-      console.log('Checking for existing pathway:', pathwayId);
-      const existingPathway = await this.getExistingPathway(pathwayId);
-      
-      if (existingPathway) {
-        console.log('Found existing pathway, personalizing for user');
-        // Personalize existing pathway for the user (static logic only)
-        const personalizedPathway = await this.personalizePathway(existingPathway, userProfile);
+      if (preScrapedPathway) {
+        console.log('Found pre-scraped pathway in database');
+        
+        // Personalize the pathway for the user
+        const personalizedPathway = await this.personalizePathway(preScrapedPathway, userProfile);
+        
+        // Save to user's pathways
         await this.saveUserPathway(userId, personalizedPathway);
+        
         return personalizedPathway;
       }
+
+      // If no exact match found, try to find similar pathways
+      console.log('No exact match found, searching for similar pathways...');
+      const similarPathways = await this.findSimilarPathways(userProfile);
       
-      // Always use static pathway generation
-      console.log('Creating new static pathway');
-      const newPathway = await this.createStaticPathway(userProfile);
+      if (similarPathways && similarPathways.length > 0) {
+        console.log('Found similar pathway, adapting for user');
+        const adaptedPathway = await this.adaptSimilarPathway(similarPathways[0], userProfile);
+        await this.saveUserPathway(userId, adaptedPathway);
+        return adaptedPathway;
+      }
+
+      // Last resort: create basic fallback pathway
+      console.log('No similar pathways found, creating basic fallback');
+      const fallbackPathway = await this.createBasicFallbackPathway(userProfile);
+      await this.saveUserPathway(userId, fallbackPathway);
       
-      console.log('Saving new pathway for user');
-      await this.saveUserPathway(userId, newPathway);
-      
-      return newPathway;
+      return fallbackPathway;
+
     } catch (error) {
-      console.error('Error generating study abroad pathway:', error);
+      console.error('Error fetching study abroad pathway:', error);
       
-      // Try to create a basic fallback pathway
+      // Emergency fallback
       try {
-        console.log('Attempting fallback pathway generation');
-        const fallbackPathway = await this.createBasicFallbackPathway(userProfile);
-        await this.saveUserPathway(userProfile.userId, fallbackPathway);
-        return fallbackPathway;
+        console.log('Attempting emergency fallback pathway generation');
+        const emergencyPathway = await this.createBasicFallbackPathway(userProfile);
+        await this.saveUserPathway(userProfile.userId, emergencyPathway);
+        return emergencyPathway;
       } catch (fallbackError) {
-        console.error('Fallback pathway generation also failed:', fallbackError);
-        throw new Error('Failed to generate study abroad pathway');
+        console.error('Emergency fallback also failed:', fallbackError);
+        throw new Error('Failed to retrieve study abroad pathway');
       }
     }
   }
@@ -80,7 +97,6 @@ class StudyAbroadService {
   generatePathwayId(country, course, level) {
     return `${country.toLowerCase()}_${course.toLowerCase().replace(/\s+/g, '_')}_${level.toLowerCase()}`;
   }
-
   /**
    * Check if pathway already exists in Firestore
    */
@@ -92,7 +108,79 @@ class StudyAbroadService {
       console.error('Error fetching existing pathway:', error);
       return null;
     }
-  }  /**
+  }
+
+  /**
+   * Find similar pathways when exact match is not found
+   */
+  async findSimilarPathways(userProfile) {
+    try {
+      const { preferredCountry, desiredCourse, academicLevel } = userProfile;
+      
+      // Try different combinations to find similar pathways
+      const searchCriteria = [
+        // Same country and course, different level
+        { country: preferredCountry, course: desiredCourse },
+        // Same country and level, different course  
+        { country: preferredCountry, academicLevel: academicLevel },
+        // Same course and level, different country
+        { course: desiredCourse, academicLevel: academicLevel },
+        // Same country only
+        { country: preferredCountry }
+      ];
+
+      for (const criteria of searchCriteria) {
+        const pathways = await pathwayScrapingService.searchPathways(criteria);
+        if (pathways && pathways.length > 0) {
+          return pathways;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error finding similar pathways:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Adapt a similar pathway for the user's specific requirements
+   */
+  async adaptSimilarPathway(similarPathway, userProfile) {
+    try {
+      console.log('Adapting similar pathway for user requirements');
+      
+      // Create a copy of the similar pathway
+      const adaptedPathway = JSON.parse(JSON.stringify(similarPathway));
+      
+      // Update basic info to match user profile
+      adaptedPathway.country = userProfile.preferredCountry;
+      adaptedPathway.course = userProfile.desiredCourse;
+      adaptedPathway.academicLevel = userProfile.academicLevel;
+      adaptedPathway.nationality = userProfile.nationality || 'Indian';
+      adaptedPathway.budgetRange = userProfile.budgetRange || 'medium';
+      
+      // Add adaptation note
+      adaptedPathway.adaptationNote = `Adapted from similar pathway for ${similarPathway.country} - ${similarPathway.course}`;
+      adaptedPathway.isAdapted = true;
+      adaptedPathway.originalPathway = {
+        country: similarPathway.country,
+        course: similarPathway.course,
+        academicLevel: similarPathway.academicLevel
+      };
+      
+      // Update timestamps
+      adaptedPathway.adaptedAt = new Date().toISOString();
+      adaptedPathway.lastUpdated = new Date().toISOString();
+      
+      // Personalize for the user
+      return await this.personalizePathway(adaptedPathway, userProfile);
+      
+    } catch (error) {
+      console.error('Error adapting similar pathway:', error);
+      throw error;
+    }
+  }/**
    * Create a new comprehensive study abroad pathway (STATIC ONLY, AI REMOVED)
    */
   createNewPathway(userProfile) {
