@@ -16,7 +16,6 @@ import {
   Tab,
   InputGroup,
   ProgressBar,
-  FormControl,
   ButtonGroup,
   Accordion,
   ListGroup
@@ -421,13 +420,9 @@ const StudyAbroadAdmin = () => {
               </Button>
             </Card.Header>
             <Card.Body>
-              <Row className="mb-3">
-                <Col md={4}>
-                  <InputGroup>
-                    <InputGroup.Prepend>
-                      <InputGroup.Text><FaSearch /></InputGroup.Text>
-                    </InputGroup.Prepend>
-                    <FormControl
+              <Row className="mb-3">                <Col md={4}>
+                  <InputGroup>                    <InputGroup.Text><FaSearch /></InputGroup.Text>
+                    <Form.Control
                       placeholder="Search templates..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -533,14 +528,10 @@ const StudyAbroadAdmin = () => {
             <Card.Header>
               <h5 className="mb-0">User Pathway Management</h5>
             </Card.Header>
-            <Card.Body>
-              <Row className="mb-3">
-                <Col md={6}>
-                  <InputGroup>
-                    <InputGroup.Prepend>
-                      <InputGroup.Text><FaSearch /></InputGroup.Text>
-                    </InputGroup.Prepend>
-                    <FormControl
+            <Card.Body>              <Row className="mb-3">
+                <Col md={6}>                  <InputGroup>
+                    <InputGroup.Text><FaSearch /></InputGroup.Text>
+                    <Form.Control
                       placeholder="Search by user ID, country, or course..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
