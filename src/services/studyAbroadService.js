@@ -1755,7 +1755,179 @@ class StudyAbroadService {
     }
   }
 
-  // ...existing code...
+  /**
+   * Admin: Get all user pathways
+   */
+  async getAllUserPathways() {
+    try {
+      const q = query(collection(db, this.userPathwaysCollection));
+      const querySnapshot = await getDocs(q);
+      const userPathways = [];
+      
+      querySnapshot.forEach((doc) => {
+        userPathways.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      // Sort by creation date (newest first)
+      return userPathways.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+    } catch (error) {
+      console.error('Error fetching all user pathways:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Admin: Update user pathway step status
+   */
+  async updateUserPathwayStepByAdmin(pathwayId, stepIndex, newStatus, adminNotes = '') {
+    try {
+      if (!pathwayId || stepIndex === undefined || !newStatus) {
+        throw new Error('Pathway ID, step index, and status are required');
+      }
+
+      const pathwayRef = doc(db, this.userPathwaysCollection, pathwayId);
+      const pathwayDoc = await getDoc(pathwayRef);
+      
+      if (!pathwayDoc.exists()) {
+        throw new Error('Pathway not found');
+      }
+
+      const pathwayData = pathwayDoc.data();
+      const updatedSteps = [...pathwayData.steps];
+      
+      if (stepIndex >= updatedSteps.length) {
+        throw new Error('Invalid step index');
+      }
+
+      updatedSteps[stepIndex] = {
+        ...updatedSteps[stepIndex],
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+        lastModifiedBy: 'admin',
+        adminNotes: adminNotes || updatedSteps[stepIndex].adminNotes || ''
+      };
+
+      if (newStatus === 'completed') {
+        updatedSteps[stepIndex].completedAt = new Date().toISOString();
+      }
+
+      await updateDoc(pathwayRef, {
+        steps: updatedSteps,
+        updatedAt: new Date().toISOString(),
+        lastModifiedBy: 'admin'
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error updating pathway step by admin:', error);
+      throw new Error('Failed to update step status');
+    }
+  }
+
+  /**
+   * Admin: Get user pathway progress summary
+   */
+  async getUserProgressSummary(userId) {
+    try {
+      const userPathways = await this.getUserPathways(userId);
+      
+      return userPathways.map(pathway => {
+        const totalSteps = pathway.steps?.length || 0;
+        const completedSteps = pathway.steps?.filter(s => s.status === 'completed').length || 0;
+        const inProgressSteps = pathway.steps?.filter(s => s.status === 'in-progress').length || 0;
+        const pendingSteps = pathway.steps?.filter(s => s.status === 'pending').length || 0;
+        
+        return {
+          pathwayId: pathway.id,
+          country: pathway.country,
+          course: pathway.course,
+          academicLevel: pathway.academicLevel,
+          totalSteps,
+          completedSteps,
+          inProgressSteps,
+          pendingSteps,
+          completionPercentage: totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0,
+          createdAt: pathway.createdAt,
+          updatedAt: pathway.updatedAt,
+          isActive: pathway.isActive
+        };
+      });
+    } catch (error) {
+      console.error('Error getting user progress summary:', error);
+      throw new Error('Failed to get user progress summary');
+    }
+  }
+
+  /**
+   * Admin: Search pathways by criteria
+   */
+  async searchPathways(searchCriteria) {
+    try {
+      const { country, course, academicLevel, type = 'template' } = searchCriteria;
+      
+      let q = query(collection(db, type === 'template' ? this.pathwaysCollection : this.userPathwaysCollection));
+      
+      if (country) {
+        q = query(q, where('country', '==', country));
+      }
+      if (course) {
+        q = query(q, where('course', '==', course));
+      }
+      if (academicLevel) {
+        q = query(q, where('academicLevel', '==', academicLevel));
+      }
+
+      const querySnapshot = await getDocs(q);
+      const pathways = [];
+      
+      querySnapshot.forEach((doc) => {
+        pathways.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      return pathways;
+    } catch (error) {
+      console.error('Error searching pathways:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Admin: Bulk update pathway templates
+   */
+  async bulkUpdateTemplates(updates) {
+    try {
+      const batch = [];
+      
+      for (const update of updates) {
+        const { templateId, data } = update;
+        const updateData = {
+          ...data,
+          updatedAt: new Date().toISOString(),
+          lastModifiedBy: 'admin'
+        };
+        
+        batch.push(
+          updateDoc(doc(db, this.pathwaysCollection, templateId), updateData)
+        );
+      }
+
+      await Promise.all(batch);
+      return true;
+    } catch (error) {
+      console.error('Error bulk updating templates:', error);
+      throw new Error('Failed to bulk update templates');
+    }
+  }
 }
 
 export default new StudyAbroadService();
