@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import SubscriptionStatus from '../subscription/SubscriptionStatus';
 import Button from './Button';
 
 const Navbar = () => {
@@ -140,9 +141,11 @@ const Navbar = () => {
                     Admin Panel
                   </Link>
                 )}
-                
-                {/* User Info */}
+                  {/* User Info */}
                 <div className="flex items-center space-x-4">
+                  {/* Subscription Status */}
+                  <SubscriptionStatus />
+                  
                   <div className="flex items-center space-x-3 px-3 py-2 rounded-lg bg-gradient-to-r from-primary-50 to-accent-50 border border-primary-100">
                     {userData?.photoURL ? (
                       <img 

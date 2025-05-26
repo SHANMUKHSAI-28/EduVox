@@ -1,3 +1,4 @@
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import AdBanner from './AdBanner';
 
 const AdContainer = ({ 
@@ -8,8 +9,13 @@ const AdContainer = ({
   adFormat = 'auto',
   className = '' 
 }) => {
-  // If no ad slots provided, just render children normally
-  if (!adSlots || adSlots.length === 0) {
+  const { planType } = useSubscriptionLimits();
+  
+  // Hide ads for premium and pro users
+  const shouldShowAds = planType === 'free';
+  
+  // If user has premium/pro plan or no ad slots provided, just render children normally
+  if (!shouldShowAds || !adSlots || adSlots.length === 0) {
     return <div className={className}>{children}</div>;
   }
 

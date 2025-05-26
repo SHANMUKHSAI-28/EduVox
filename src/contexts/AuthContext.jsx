@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../firebaseConfig';
+import subscriptionService from '../services/subscriptionService';
 
 const AuthContext = createContext();
 
@@ -24,8 +25,8 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [subscriptionData, setSubscriptionData] = useState(null);
   const [loading, setLoading] = useState(true);
-
   // Create user document in Firestore
   const createUserDocument = async (user, additionalData = {}) => {
     if (!user) return;
@@ -48,6 +49,9 @@ export const AuthProvider = ({ children }) => {
           updatedAt: createdAt,
           ...additionalData
         });
+
+        // Create free tier subscription for new users
+        await subscriptionService.createFreeSubscription(user.uid);
       } catch (error) {
         console.error('Error creating user document:', error);
       }
@@ -57,6 +61,27 @@ export const AuthProvider = ({ children }) => {
     const updatedUserSnap = await getDoc(userRef);
     if (updatedUserSnap.exists()) {
       setUserData(updatedUserSnap.data());
+    }
+
+    // Fetch subscription data
+    await loadSubscriptionData(user.uid);
+  };
+
+  // Load subscription data
+  const loadSubscriptionData = async (userId) => {
+    try {
+      const subscription = await subscriptionService.getUserSubscription(userId);
+      setSubscriptionData(subscription);
+    } catch (error) {
+      console.error('Error loading subscription data:', error);
+      setSubscriptionData(null);
+    }
+  };
+
+  // Refresh subscription data
+  const refreshSubscription = async () => {
+    if (currentUser) {
+      await loadSubscriptionData(currentUser.uid);
     }
   };
 
@@ -97,12 +122,12 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       throw error;
     }
-  };
-  // Sign out
+  };  // Sign out
   const logout = async () => {
     try {
       await signOut(auth);
       setUserData(null);
+      setSubscriptionData(null);
     } catch (error) {
       throw error;
     }
@@ -119,26 +144,27 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
+      setCurrentUser(user);      if (user) {
         await createUserDocument(user);
       } else {
         setUserData(null);
+        setSubscriptionData(null);
       }
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
-
   const value = {
     currentUser,
     userData,
+    subscriptionData,
     signup,
     login,
     loginWithGoogle,
     logout,
     resetPassword,
+    refreshSubscription,
     loading
   };
 

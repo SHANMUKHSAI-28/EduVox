@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import studyAbroadService from '../../services/studyAbroadService';
+import SubscriptionStatus from '../subscription/SubscriptionStatus';
+import SubscriptionPlans from '../subscription/SubscriptionPlans';
 import { 
   Container, 
   Card, 
@@ -23,11 +26,21 @@ import {
   FaMoneyBillWave, 
   FaCheckCircle, 
   FaClock, 
-  FaExclamationTriangle 
+  FaExclamationTriangle,
+  FaCrown 
 } from 'react-icons/fa';
 
 const UniGuidePro = () => {
   const { currentUser } = useAuth();
+  const { 
+    canPerformAction, 
+    trackUsage, 
+    showUpgradePrompt, 
+    limits, 
+    usage, 
+    planType 
+  } = useSubscriptionLimits();
+  
   const [loading, setLoading] = useState(false);
   const [pathway, setPathway] = useState(null);
   const [userPathways, setUserPathways] = useState([]);
@@ -35,6 +48,7 @@ const UniGuidePro = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedStep, setSelectedStep] = useState(null);
   const [alert, setAlert] = useState({ show: false, message: '', variant: 'info' });
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [formData, setFormData] = useState({
     preferredCountry: '',
@@ -72,12 +86,30 @@ const UniGuidePro = () => {
       [e.target.name]: e.target.value
     });
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check subscription limits for pathway generation
+    if (!canPerformAction('generatePathway')) {
+      showUpgradePrompt('generatePathway', () => setShowUpgradeModal(true));
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Track usage before generating pathway
+      const tracked = await trackUsage('generatePathway');
+      if (!tracked) {
+        setAlert({
+          show: true,
+          message: 'Failed to track usage. Please try again.',
+          variant: 'danger'
+        });
+        setLoading(false);
+        return;
+      }
+
       const userProfile = {
         userId: currentUser.uid,
         ...formData,
@@ -261,16 +293,33 @@ const UniGuidePro = () => {
       </Container>
     );
   }
-
   return (
     <Container className="mt-4">
+      {/* Subscription Status Banner */}
+      <SubscriptionStatus 
+        className="mb-4"
+        showUsage={true}
+        featureName="pathway generation"
+      />
+      
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>
           <FaGlobeAmericas className="mr-2" />
           UniGuidePro - Study Abroad Roadmap
         </h1>
         {pathway && (
-          <Button variant="outline-primary" onClick={() => setShowForm(true)}>
+          <Button 
+            variant="outline-primary" 
+            onClick={() => {
+              if (!canPerformAction('generatePathway')) {
+                setShowUpgradeModal(true);
+                return;
+              }
+              setShowForm(true);
+            }}
+            className="d-flex align-items-center"
+          >
+            {planType === 'free' && <FaCrown className="mr-2 text-warning" />}
             Generate New Roadmap
           </Button>
         )}
@@ -670,10 +719,15 @@ const UniGuidePro = () => {
               </ul>
             </Card.Body>
           </Card>
-        </div>
-      )}
+        </div>      )}
 
       <StepModal />
+      
+      {/* Subscription Plans Modal */}
+      <SubscriptionPlans 
+        show={showUpgradeModal}
+        onHide={() => setShowUpgradeModal(false)}
+      />
     </Container>
   );
 };

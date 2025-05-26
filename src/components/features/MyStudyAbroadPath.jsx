@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import { academicProfileService } from '../../services/universityService';
 import studyAbroadService from '../../services/studyAbroadService';
+import SubscriptionPlans from '../subscription/SubscriptionPlans';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -9,6 +11,13 @@ import { FaUser, FaGraduationCap, FaDollarSign, FaGlobe, FaCalendarAlt, FaCheckC
 
 const MyStudyAbroadPath = () => {
   const { currentUser } = useAuth();
+  const { 
+    canPerformAction, 
+    getRemainingCount, 
+    trackUsage, 
+    showUpgradePrompt, 
+    planType 
+  } = useSubscriptionLimits();
   const [loading, setLoading] = useState(true);
   const [generatingPath, setGeneratingPath] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
@@ -16,6 +25,7 @@ const MyStudyAbroadPath = () => {
   const [alert, setAlert] = useState(null);
   const [activeStep, setActiveStep] = useState(null);
   const [lastProfileUpdate, setLastProfileUpdate] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -99,15 +109,31 @@ const MyStudyAbroadPath = () => {
       return value && value !== '' && (Array.isArray(value) ? value.length > 0 : true);
     });
   };
-
   const generatePersonalizedPath = async (profile = userProfile) => {
     if (!profile) return;
+
+    // Check subscription limits for pathway generation
+    if (!canPerformAction('generatePathway')) {
+      showUpgradePrompt('generatePathway', () => setShowUpgradeModal(true));
+      return;
+    }
 
     console.log('🚀 Generating personalized path for profile:', profile);
     setGeneratingPath(true);
     setAlert(null);
 
     try {
+      // Track usage before generating
+      const tracked = await trackUsage('generatePathway');
+      if (!tracked) {
+        setAlert({
+          type: 'error',
+          message: 'Failed to track usage. Please try again.'
+        });
+        setGeneratingPath(false);
+        return;
+      }
+
       // Transform user profile to match pathway service format
       const pathwayData = {
         userId: currentUser.uid,
@@ -147,12 +173,13 @@ const MyStudyAbroadPath = () => {
         setPathway(generatedPathway);
       } else {
         console.log('❌ Unexpected pathway structure:', generatedPathway);
-        throw new Error('Invalid pathway structure received');
-      }
+        throw new Error('Invalid pathway structure received');      }
       
+      const remaining = getRemainingCount('generatePathway');
+      const remainingText = remaining === Infinity ? '' : ` (${remaining} remaining this month)`;
       setAlert({
         type: 'success',
-        message: 'Your study abroad pathway has been generated with the latest program information!'
+        message: `Your study abroad pathway has been generated with the latest program information!${remainingText}`
       });
     } catch (error) {
       console.error('Error generating pathway:', error);
@@ -189,9 +216,14 @@ const MyStudyAbroadPath = () => {
         message: 'Failed to update step status.'
       });
     }
-  };
-  const regeneratePathway = async () => {
+  };  const regeneratePathway = async () => {
     if (!userProfile) return;
+    
+    // Check subscription limits for pathway regeneration
+    if (!canPerformAction('generatePathway')) {
+      showUpgradePrompt('generatePathway', () => setShowUpgradeModal(true));
+      return;
+    }
     
     setGeneratingPath(true);
     setAlert({
@@ -201,6 +233,17 @@ const MyStudyAbroadPath = () => {
     });
     
     try {
+      // Track usage for regeneration
+      const tracked = await trackUsage('generatePathway');
+      if (!tracked) {
+        setAlert({
+          type: 'error',
+          message: 'Failed to track usage. Please try again.'
+        });
+        setGeneratingPath(false);
+        return;
+      }
+
       const pathwayData = {
         userId: currentUser.uid,
         preferredCountry: userProfile.preferred_countries?.[0] || 'USA',
@@ -224,14 +267,14 @@ const MyStudyAbroadPath = () => {
         },
         nationality: userProfile.nationality,
         fullName: userProfile.full_name
-      };
-
-      const refreshedPathway = await studyAbroadService.generatePathwayWithRefresh(pathwayData);
+      };      const refreshedPathway = await studyAbroadService.generatePathwayWithRefresh(pathwayData);
       setPathway(refreshedPathway);
       
+      const remaining = getRemainingCount('generatePathway');
+      const remainingText = remaining === Infinity ? '' : ` (${remaining} remaining this month)`;
       setAlert({
         type: 'success',
-        message: '✨ Your pathway has been refreshed with the latest program updates and your current profile!'
+        message: `✨ Your pathway has been refreshed with the latest program updates and your current profile!${remainingText}`
       });
     } catch (error) {
       console.error('Error refreshing pathway:', error);
@@ -678,8 +721,12 @@ const MyStudyAbroadPath = () => {
                 )}
               </div>
             </div>
-          )}
-        </div>
+          )}        </div>
+      )}
+
+      {/* Subscription Upgrade Modal */}
+      {showUpgradeModal && (
+        <SubscriptionPlans onClose={() => setShowUpgradeModal(false)} />
       )}
     </div>
   );

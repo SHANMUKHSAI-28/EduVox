@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits';
 import Sidebar from '../components/common/Sidebar';
 import UniversityCard from '../components/university/UniversityCard';
 import UniversityFilters from '../components/university/UniversityFilters';
 import UniversityComparison from '../components/university/UniversityComparisonEnhanced';
+import SubscriptionPlans from '../components/subscription/SubscriptionPlans';
 import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -19,6 +21,13 @@ import { exportUniversitiesPDF } from '../utils/pdfExport';
 
 const Universities = () => {
   const { currentUser } = useAuth();
+  const { 
+    canPerformAction, 
+    getRemainingCount, 
+    trackUsage, 
+    showUpgradePrompt, 
+    planType 
+  } = useSubscriptionLimits();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('discover'); // discover, saved
   const [academicProfile, setAcademicProfile] = useState(null);
@@ -29,6 +38,7 @@ const Universities = () => {
   const [alert, setAlert] = useState(null);
   const [filters, setFilters] = useState({});
   const [showComparison, setShowComparison] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [lastDoc, setLastDoc] = useState(null);
 
@@ -133,10 +143,20 @@ const Universities = () => {
 
   const handleRemoveSavedUniversity = (universityId) => {
     setSavedUniversities(prev => prev.filter(uni => uni.id !== universityId));
-  };
-  const handleCompareUniversity = (university) => {
-    if (comparisonUniversities.length >= 10) {
-      setAlert({ type: 'warning', message: 'You can compare up to 10 universities at once.' });
+  };  const handleCompareUniversity = async (university) => {
+    // Check subscription limits for university comparison
+    if (!canPerformAction('compareUniversities')) {
+      showUpgradePrompt('compareUniversities', () => setShowUpgradeModal(true));
+      return;
+    }
+
+    const maxComparisons = planType === 'free' ? 3 : planType === 'premium' ? 10 : 10;
+    
+    if (comparisonUniversities.length >= maxComparisons) {
+      setAlert({ 
+        type: 'warning', 
+        message: `You can compare up to ${maxComparisons} universities at once with your ${planType} plan.` 
+      });
       setTimeout(() => setAlert(null), 3000);
       return;
     }
@@ -147,16 +167,34 @@ const Universities = () => {
       return;
     }
 
+    // Track usage
+    const tracked = await trackUsage('compareUniversities');
+    if (!tracked) {
+      setAlert({ type: 'error', message: 'Failed to track usage. Please try again.' });
+      setTimeout(() => setAlert(null), 3000);
+      return;
+    }
+
     setComparisonUniversities(prev => [...prev, university]);
-    setAlert({ type: 'success', message: `${university.name} added to comparison (${comparisonUniversities.length + 1}/10)` });
+    const remaining = getRemainingCount('compareUniversities');
+    const remainingText = remaining === Infinity ? '' : ` (${remaining} remaining this month)`;
+    setAlert({ 
+      type: 'success', 
+      message: `${university.name} added to comparison${remainingText}` 
+    });
     setTimeout(() => setAlert(null), 3000);
   };
 
   const handleRemoveFromComparison = (universityId) => {
     setComparisonUniversities(prev => prev.filter(uni => uni.id !== universityId));
   };
+  const handleExportPDF = async () => {
+    // Check subscription limits for PDF export
+    if (!canPerformAction('exportPdf')) {
+      showUpgradePrompt('exportPdf', () => setShowUpgradeModal(true));
+      return;
+    }
 
-  const handleExportPDF = () => {
     if (savedUniversities.length === 0) {
       setAlert({ type: 'warning', message: 'No universities to export. Save some universities first.' });
       setTimeout(() => setAlert(null), 3000);
@@ -164,8 +202,18 @@ const Universities = () => {
     }
 
     try {
+      // Track usage
+      const tracked = await trackUsage('exportPdf');
+      if (!tracked) {
+        setAlert({ type: 'error', message: 'Failed to track usage. Please try again.' });
+        setTimeout(() => setAlert(null), 3000);
+        return;
+      }
+
       exportUniversitiesPDF(savedUniversities, academicProfile, currentUser?.email);
-      setAlert({ type: 'success', message: 'PDF exported successfully!' });
+      const remaining = getRemainingCount('exportPdf');
+      const remainingText = remaining === Infinity ? '' : ` (${remaining} remaining this month)`;
+      setAlert({ type: 'success', message: `PDF exported successfully!${remainingText}` });
       setTimeout(() => setAlert(null), 3000);
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -451,15 +499,18 @@ const Universities = () => {
             </div>
           </div>
         </main>
-      </div>
-
-      {/* University Comparison Modal */}
+      </div>      {/* University Comparison Modal */}
       <UniversityComparison
         universities={comparisonUniversities}
         isOpen={showComparison}
         onClose={() => setShowComparison(false)}
         onRemove={handleRemoveFromComparison}
       />
+
+      {/* Subscription Upgrade Modal */}
+      {showUpgradeModal && (
+        <SubscriptionPlans onClose={() => setShowUpgradeModal(false)} />
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
 import { exportComparisonPDF } from '../../utils/pdfExport';
@@ -6,14 +7,16 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const UniversityComparisonEnhanced = ({ universities, onRemove, isOpen, onClose }) => {
   const { currentUser } = useAuth();
+  const { planType, canPerformAction, trackUsage } = useSubscriptionLimits();
   const [selectedCategories, setSelectedCategories] = useState({
     basic: true,
     requirements: true,
     financial: true,
     programs: true
-  });
-  const [currentPage, setCurrentPage] = useState(0);
+  });  const [currentPage, setCurrentPage] = useState(0);
   const [universitiesPerPage] = useState(4); // Show 4 universities per page for better readability
+
+  const isFreePlan = planType === 'free';
 
   const formatCurrency = (amount) => {
     if (!amount) return 'Not specified';
@@ -59,6 +62,12 @@ const UniversityComparisonEnhanced = ({ universities, onRemove, isOpen, onClose 
   };
 
   const exportComparison = async () => {
+    // Check subscription restrictions for PDF export
+    if (isFreePlan) {
+      alert('PDF export is available for Premium and Pro users. Please upgrade your plan.');
+      return;
+    }
+
     try {
       await exportComparisonPDF(universities, currentUser?.email);
       console.log('Comparison PDF exported successfully');
@@ -68,10 +77,36 @@ const UniversityComparisonEnhanced = ({ universities, onRemove, isOpen, onClose 
   };
 
   if (!isOpen || universities.length === 0) return null;
-
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`University Comparison (${universities.length})`} size="max">
       <div className="space-y-6">
+        {/* Subscription Status Banner */}
+        {isFreePlan && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-amber-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-amber-800">
+                    Free Plan - Enhanced comparison features
+                  </p>
+                  <p className="text-xs text-amber-600">
+                    Upgrade to Premium or Pro for PDF export and unlimited comparisons
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => window.location.href = '/subscription'}
+                className="px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-md hover:bg-amber-700 transition-colors duration-200"
+              >
+                Upgrade Now
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header Controls */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex flex-wrap gap-2">
@@ -91,11 +126,18 @@ const UniversityComparisonEnhanced = ({ universities, onRemove, isOpen, onClose 
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={exportComparison}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportComparison}
+              disabled={isFreePlan}
+              className={isFreePlan ? 'opacity-50 cursor-not-allowed' : ''}
+              title={isFreePlan ? 'PDF export available for Premium and Pro users' : 'Export all universities as PDF'}
+            >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Export All ({universities.length})
+              Export All ({universities.length}) {isFreePlan && '(Premium)'}
             </Button>
           </div>
         </div>

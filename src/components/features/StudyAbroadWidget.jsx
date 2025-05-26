@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import studyAbroadService from '../../services/studyAbroadService';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -8,11 +9,13 @@ import {
   FaCheckCircle, 
   FaClock, 
   FaArrowRight,
-  FaPlus 
+  FaPlus,
+  FaCrown
 } from 'react-icons/fa';
 
 const StudyAbroadWidget = () => {
   const { currentUser } = useAuth();
+  const { canPerformAction, planType, usage, limits } = useSubscriptionLimits();
   const navigate = useNavigate();
   const [userPathways, setUserPathways] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +53,38 @@ const StudyAbroadWidget = () => {
     return pathway.steps.find(step => step.status === 'pending' || step.status === 'in-progress');
   };
 
+  // Check if user can create/view pathways
+  const canCreatePathway = canPerformAction('pathway_generation');
+  const pathwayLimitReached = usage.pathwaysGenerated >= limits.pathwaysPerMonth;
+
+  // Subscription status component
+  const SubscriptionStatus = () => {
+    if (planType === 'free' && pathwayLimitReached) {
+      return (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center">
+            <FaCrown className="text-amber-500 mr-2" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-800">
+                Monthly limit reached ({usage.pathwaysGenerated}/{limits.pathwaysPerMonth} pathways)
+              </p>
+              <p className="text-xs text-amber-600">
+                Upgrade to Premium for unlimited pathway generation
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/profile?tab=subscription')}
+              className="ml-2 px-3 py-1 bg-amber-600 text-white text-xs rounded-md hover:bg-amber-700"
+            >
+              Upgrade
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -61,9 +96,10 @@ const StudyAbroadWidget = () => {
       </div>
     );
   }
-
   if (userPathways.length === 0) {
-    return (      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-md p-6 border border-blue-200">
+    return (
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-md p-6 border border-blue-200">
+        <SubscriptionStatus />
         <div className="text-center">
           <FaGlobeAmericas className="mx-auto h-12 w-12 text-blue-500 mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -74,12 +110,17 @@ const StudyAbroadWidget = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={() => navigate('/my-study-path')}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
+              onClick={() => canCreatePathway ? navigate('/my-study-path') : navigate('/profile?tab=subscription')}
+              disabled={!canCreatePathway && planType === 'free'}
+              className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                canCreatePathway 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
-              <FaArrowRight className="mr-2" />
-              My Study Path
-            </button>            <button
+              {canCreatePathway ? <FaArrowRight className="mr-2" /> : <FaCrown className="mr-2" />}
+              {canCreatePathway ? 'My Study Path' : 'Upgrade to Create Path'}
+            </button><button
               onClick={() => navigate('/uniguidepro')}
               className="inline-flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 text-sm font-medium rounded-md hover:bg-blue-50 transition-colors duration-200"
             >
@@ -192,6 +233,9 @@ const StudyAbroadWidget = () => {
           >
             General UniGuidePro
           </button>        </div>
+
+        {/* Subscription Status - New Component */}
+        <SubscriptionStatus />
 
         {/* Multiple Pathways Indicator - Hidden for now */}
         {false && userPathways.length > 1 && (

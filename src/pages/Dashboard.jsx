@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits';
 import Sidebar from '../components/common/Sidebar';
 import AdBanner from '../components/ads/AdBanner';
 import StudyAbroadWidget from '../components/features/StudyAbroadWidget';
 import { academicProfileService, savedUniversitiesService } from '../services/universityService';
+import { FaCrown, FaStar, FaRocket } from 'react-icons/fa';
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileCompletion, setProfileCompletion] = useState(0);
   const [savedUniversitiesCount, setSavedUniversitiesCount] = useState(0);
   const { userData, currentUser } = useAuth();
+  const { planType, usage, limits } = useSubscriptionLimits();
 
   useEffect(() => {
     if (currentUser) {
@@ -220,7 +223,72 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
-              </div>{/* Stats grid */}              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+              </div>{/* Subscription Status Widget */}
+              {planType === 'free' && (
+                <div className="mb-6">
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <FaCrown className="h-8 w-8 text-amber-500" />
+                        </div>
+                        <div className="ml-4">
+                          <h3 className="text-lg font-semibold text-amber-900">
+                            Unlock Premium Features
+                          </h3>
+                          <p className="text-sm text-amber-700">
+                            Upgrade to access unlimited university comparisons, advanced filters, and pathway generation
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <a
+                          href="/profile?tab=subscription"
+                          className="inline-flex items-center px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors duration-200"
+                        >
+                          <FaStar className="mr-2 h-4 w-4" />
+                          Upgrade Now
+                        </a>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-white/50 rounded-lg p-3 border border-amber-100">
+                        <div className="text-sm font-medium text-amber-900">University Comparisons</div>
+                        <div className="text-xs text-amber-600">{usage.universitiesCompared}/{limits.universitiesCompared} used</div>
+                      </div>
+                      <div className="bg-white/50 rounded-lg p-3 border border-amber-100">
+                        <div className="text-sm font-medium text-amber-900">Pathway Generation</div>
+                        <div className="text-xs text-amber-600">{usage.pathwaysGenerated}/{limits.pathwaysPerMonth} used</div>
+                      </div>
+                      <div className="bg-white/50 rounded-lg p-3 border border-amber-100">
+                        <div className="text-sm font-medium text-amber-900">PDF Exports</div>
+                        <div className="text-xs text-amber-600">{usage.pdfExports}/{limits.pdfExports} used</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {planType !== 'free' && (
+                <div className="mb-6">
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <FaRocket className="h-8 w-8 text-emerald-500" />
+                      </div>
+                      <div className="ml-4">
+                        <h3 className="text-lg font-semibold text-emerald-900 capitalize">
+                          {planType} Plan Active
+                        </h3>
+                        <p className="text-sm text-emerald-700">
+                          Enjoy unlimited access to all premium features
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}              {/* Stats grid */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                 {stats.map((stat, index) => (
                   <div key={stat.name} className="group">
                     {stat.href ? (

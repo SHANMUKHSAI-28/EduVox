@@ -1,18 +1,39 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import studyAbroadService from '../../services/studyAbroadService';
 import { formatDate } from '../../utils/dateUtils';
 import { Link } from 'react-router-dom';
+import SubscriptionStatus from '../subscription/SubscriptionStatus';
 
 const PathwayHistory = () => {
   const { currentUser } = useAuth();
+  const { planType, loading: subscriptionLoading } = useSubscriptionLimits();
   const [pathwayHistory, setPathwayHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Define limits based on subscription plan
+  const getPathwayHistoryLimit = () => {
+    switch (planType) {
+      case 'premium':
+        return 20; // Premium users can view last 20 pathways
+      case 'pro':
+        return null; // Pro users have unlimited access
+      default:
+        return 5; // Free users can view last 5 pathways
+    }
+  };
+
+  const pathwayLimit = getPathwayHistoryLimit();
+  const isFreePlan = !subscription?.planType || subscription?.planType === 'free';
+  const limitedPathways = pathwayLimit ? pathwayHistory.slice(0, pathwayLimit) : pathwayHistory;
+  const hasMorePathways = pathwayLimit && pathwayHistory.length > pathwayLimit;
 
   useEffect(() => {
     const fetchPathwayHistory = async () => {
-      if (!currentUser) return;      try {
+      if (!currentUser) return;
+
+      try {
         setLoading(true);
         const history = await studyAbroadService.getUserPathways(currentUser.uid);
         setPathwayHistory(history);
@@ -27,7 +48,7 @@ const PathwayHistory = () => {
     fetchPathwayHistory();
   }, [currentUser]);
 
-  if (loading) {
+  if (loading || subscriptionLoading) {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-white rounded-xl shadow-soft p-8">
@@ -60,10 +81,37 @@ const PathwayHistory = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* Subscription Status Widget */}
+      {isFreePlan && (
+        <div className="mb-6">
+          <SubscriptionStatus 
+            currentUsage={pathwayHistory.length}
+            limit={pathwayLimit}
+            featureName="Pathway History"
+            description="View your study abroad pathway history"
+          />
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-soft overflow-hidden">
         <div className="bg-gradient-to-r from-primary-600 to-accent-600 px-8 py-6">
           <h1 className="text-2xl font-bold text-white mb-2">Study Abroad Pathway History</h1>
-          <p className="text-primary-100">View all your generated study abroad pathways</p>
+          <p className="text-primary-100">
+            {isFreePlan 
+              ? `View your last ${pathwayLimit} study abroad pathways`
+              : 'View all your generated study abroad pathways'
+            }
+          </p>
+          {subscription?.planType && (
+            <div className="flex items-center mt-2">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white">
+                {subscription.planType.charAt(0).toUpperCase() + subscription.planType.slice(1)} Plan
+              </span>
+              {subscription?.planType === 'pro' && (
+                <span className="ml-2 text-xs text-primary-100">Unlimited Access</span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="p-8">
@@ -90,14 +138,44 @@ const PathwayHistory = () => {
                 </Link>
               </div>
             </div>
-          ) : (            <div className="space-y-6">
-              {pathwayHistory.map((pathway, index) => (
+          ) : (
+            <div className="space-y-6">
+              {/* Show usage summary for free users */}
+              {isFreePlan && pathwayHistory.length > 0 && (
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-amber-800 mb-1">
+                        Viewing {limitedPathways.length} of {pathwayHistory.length} pathways
+                      </h3>
+                      <p className="text-xs text-amber-700">
+                        Free plan shows your {pathwayLimit} most recent pathways. Upgrade to view more!
+                      </p>
+                    </div>
+                    <Link
+                      to="/subscription"
+                      className="px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-md hover:bg-amber-700 transition-colors duration-200"
+                    >
+                      Upgrade Now
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {limitedPathways.map((pathway, index) => (
                 <div key={`${pathway.id}_${pathway.createdAt}_${index}`} className="border border-secondary-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-secondary-900 mb-2">
-                        Study Abroad Pathway #{pathwayHistory.length - index}
-                      </h3>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-secondary-900">
+                          Study Abroad Pathway #{pathwayHistory.length - index}
+                        </h3>
+                        {isFreePlan && index >= pathwayLimit - 1 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            Recent
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center space-x-4 text-sm text-secondary-600">
                         <span className="flex items-center">
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,7 +227,7 @@ const PathwayHistory = () => {
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
+                  {/* Action Buttons with subscription awareness */}
                   <div className="flex items-center justify-between pt-4 border-t border-secondary-200">
                     <div className="flex items-center space-x-2">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -170,13 +248,60 @@ const PathwayHistory = () => {
                       >
                         View Details
                       </Link>
-                      <button className="text-secondary-500 hover:text-secondary-600 text-sm font-medium transition-colors duration-200">
+                      <button 
+                        className={`text-sm font-medium transition-colors duration-200 ${
+                          isFreePlan 
+                            ? 'text-secondary-400 cursor-not-allowed' 
+                            : 'text-secondary-500 hover:text-secondary-600'
+                        }`}
+                        disabled={isFreePlan}
+                        title={isFreePlan ? 'Export feature available for Premium and Pro users' : 'Export pathway as PDF'}
+                      >
                         Export PDF
+                        {isFreePlan && (
+                          <svg className="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0l3-3m-3 3l-3-3m3-8V4m0 0L9 7m3-3l3 3" />
+                          </svg>
+                        )}
                       </button>
                     </div>
                   </div>
                 </div>
               ))}
+
+              {/* Show upgrade prompt if user has more pathways but reached limit */}
+              {hasMorePathways && (
+                <div className="border-2 border-dashed border-amber-300 rounded-lg p-8 text-center bg-gradient-to-br from-amber-50 to-orange-50">
+                  <div className="text-amber-600 mb-4">
+                    <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-amber-800 mb-2">
+                    You have {pathwayHistory.length - pathwayLimit} more pathways!
+                  </h3>
+                  <p className="text-amber-700 mb-6">
+                    Upgrade to Premium or Pro to access your complete pathway history and unlock advanced features.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Link
+                      to="/subscription"
+                      className="inline-flex items-center px-6 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors duration-200"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Upgrade Now
+                    </Link>
+                    <Link
+                      to="/subscription"
+                      className="inline-flex items-center px-6 py-2 border border-amber-300 text-amber-700 font-medium rounded-lg hover:bg-amber-50 transition-colors duration-200"
+                    >
+                      Compare Plans
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 
 const AdBanner = ({ 
   slot = '', // AdSense ad unit slot ID
@@ -7,7 +8,13 @@ const AdBanner = ({
   className = '',
   style = {}
 }) => {
+  const { planType } = useSubscriptionLimits();
   const adRef = useRef(null);
+
+  // Don't render ads for premium/pro users
+  if (planType !== 'free') {
+    return null;
+  }
 
   // AdSense size configurations
   const getAdSenseConfig = () => {

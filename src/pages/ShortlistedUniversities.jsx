@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits';
 import { savedUniversitiesService } from '../services/universityService';
+import { exportUniversitiesPDF } from '../utils/pdfExport';
 import Sidebar from '../components/common/Sidebar';
 import UniversityCard from '../components/university/UniversityCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -9,10 +11,12 @@ import Button from '../components/common/Button';
 
 const ShortlistedUniversities = () => {
   const { currentUser } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [shortlistedUniversities, setShortlistedUniversities] = useState([]);
+  const { planType, trackUsage, canPerformAction, getRemainingCount, showUpgradePrompt } = useSubscriptionLimits();
+  const [sidebarOpen, setSidebarOpen] = useState(false);  const [shortlistedUniversities, setShortlistedUniversities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [alert, setAlert] = useState(null);
+
+  const isFreePlan = planType === 'free';
 
   useEffect(() => {
     if (currentUser) {
@@ -85,6 +89,49 @@ const ShortlistedUniversities = () => {
       setTimeout(() => setAlert(null), 3000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    // Check subscription limits for PDF export
+    if (!canPerformAction('exportPdf')) {
+      showUpgradePrompt('exportPdf', () => {
+        window.location.href = '/profile?tab=subscription';
+      });
+      return;
+    }
+
+    if (shortlistedUniversities.length === 0) {
+      setAlert({ type: 'warning', message: 'No universities to export. Your shortlist is empty.' });
+      setTimeout(() => setAlert(null), 3000);
+      return;
+    }
+
+    try {
+      // Track usage for subscription limits
+      const tracked = await trackUsage('exportPdf');
+      if (!tracked) {
+        setAlert({ type: 'error', message: 'Failed to track usage. Please try again.' });
+        setTimeout(() => setAlert(null), 3000);
+        return;
+      }
+
+      // Export PDF with user profile (if available)
+      await exportUniversitiesPDF(shortlistedUniversities, null, currentUser?.email);
+      
+      const remaining = getRemainingCount('exportPdf');
+      setAlert({ 
+        type: 'success', 
+        message: `PDF exported successfully! ${isFreePlan ? `${remaining} exports remaining this month.` : ''}` 
+      });
+      setTimeout(() => setAlert(null), 5000);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      setAlert({ 
+        type: 'error', 
+        message: 'Failed to export PDF. Please try again.' 
+      });
+      setTimeout(() => setAlert(null), 3000);
     }
   };
 
@@ -188,6 +235,18 @@ const ShortlistedUniversities = () => {
                     </svg>
                     Add More Universities
                   </Button>
+
+                  <Button
+                    onClick={handleExportPDF}
+                    variant="primary"
+                    className="flex items-center justify-center gap-2"
+                    disabled={isFreePlan && !canPerformAction('exportPdf')}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export PDF {isFreePlan && '(Premium)'}
+                  </Button>
                   
                   <Button
                     onClick={handleClearAllShortlisted}
@@ -199,6 +258,34 @@ const ShortlistedUniversities = () => {
                     </svg>
                     Clear All
                   </Button>
+                </div>
+              )}
+
+              {/* Subscription Status Banner for Free Users */}
+              {isFreePlan && shortlistedUniversities.length > 0 && (
+                <div className="mb-6">
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <svg className="w-6 h-6 text-amber-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        <div>
+                          <h3 className="text-lg font-semibold text-amber-900">Free Plan - Limited Features</h3>
+                          <p className="text-sm text-amber-700">
+                            Upgrade to Premium for unlimited PDF exports and advanced features
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        href="/profile?tab=subscription"
+                        variant="primary"
+                        className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 text-sm"
+                      >
+                        Upgrade Now
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 
