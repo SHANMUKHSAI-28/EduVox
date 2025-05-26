@@ -213,13 +213,14 @@ class PaymentService {
         name: 'Free',
         price: 0,
         features: [
-          'Full access to UniGuidePro features',
+          '5 uses of UniGuidePro per month',
           '1 study abroad pathway per month',
           '3 university comparisons',
           'Basic university search',
           'Community support'
         ],
         limitations: [
+          'Limited UniGuidePro usage (5/month)',
           'No access to MyStudyPath',
           'No PDF exports',
           'Limited filter options',
@@ -230,7 +231,7 @@ class PaymentService {
         name: 'Premium',
         price: 999,
         features: [
-          'Full access to UniGuidePro features',
+          '10 uses of UniGuidePro per month',
           'MyStudyPath access',
           'Unlimited study abroad pathways',
           '10 university comparisons per month',
@@ -244,7 +245,7 @@ class PaymentService {
         name: 'Pro',
         price: 1999,
         features: [
-          'Full access to UniGuidePro features',
+          'Unlimited UniGuidePro usage',
           'MyStudyPath access',
           'Everything in Premium',
           'Unlimited university comparisons',

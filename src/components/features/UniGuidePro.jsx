@@ -4,6 +4,7 @@ import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import studyAbroadService from '../../services/studyAbroadService';
 import SubscriptionStatus from '../subscription/SubscriptionStatus';
 import SubscriptionPlans from '../subscription/SubscriptionPlans';
+import './UniGuidePro.css';
 import { 
   Container, 
   Card, 
@@ -19,6 +20,7 @@ import {
   Modal,
   ListGroup
 } from 'react-bootstrap';
+import { motion } from 'framer-motion';
 import { 
   FaGlobeAmericas, 
   FaGraduationCap, 
@@ -27,8 +29,23 @@ import {
   FaCheckCircle, 
   FaClock, 
   FaExclamationTriangle,
-  FaCrown 
+  FaCrown,
+  FaInfoCircle,
+  FaUniversity,
+  FaIdCard,
+  FaPlaneDeparture,
+  FaLightbulb,
+  FaChartLine,
+  FaStar,
+  FaRegBookmark
 } from 'react-icons/fa';
+
+// Custom CSS for animations and styling
+const cardTransition = {
+  type: "tween",
+  ease: "easeInOut",
+  duration: 0.5
+};
 
 const UniGuidePro = () => {
   const { currentUser } = useAuth();
@@ -61,12 +78,35 @@ const UniGuidePro = () => {
     englishProficiency: '',
     workExperience: ''
   });
-
   useEffect(() => {
     if (currentUser) {
       loadUserPathways();
     }
   }, [currentUser]);
+  
+  // Show usage limit information when subscription data loads
+  useEffect(() => {
+    if (!subscriptionLoading && limits && usage) {
+      // Display usage information based on subscription plan
+      if (limits.uniGuideProUsage !== -1) {
+        const usesRemaining = limits.uniGuideProUsage - (usage.uniGuideProUsage || 0);
+        
+        if (usesRemaining > 0) {
+          setAlert({
+            show: true,
+            message: `You have ${usesRemaining} UniGuidePro ${usesRemaining === 1 ? 'use' : 'uses'} remaining this month. Upgrade for more access.`,
+            variant: 'info'
+          });
+        } else if (usesRemaining <= 0) {
+          setAlert({
+            show: true,
+            message: 'You have reached your UniGuidePro usage limit. Upgrade to Premium or Pro for more access.',
+            variant: 'warning'
+          });
+        }
+      }
+    }
+  }, [subscriptionLoading, limits, usage]);
 
   const loadUserPathways = async () => {
     try {
@@ -108,12 +148,24 @@ const UniGuidePro = () => {
       return;
     }
     
-    // UniGuidePro is free for all users - proceed without subscription check
+    // Check if the user can use UniGuidePro based on their subscription plan
+    if (!canPerformAction('useUniGuidePro')) {
+      console.log('⚠️ UniGuidePro: Usage limit reached');
+      setAlert({
+        show: true,
+        message: 'You have reached your usage limit for UniGuidePro. Upgrade to Premium or Pro for more access.',
+        variant: 'warning'
+      });
+      showUpgradePrompt('useUniGuidePro', () => setShowUpgradeModal(true));
+      return;
+    }
+    
+    // User has access to UniGuidePro
     console.log('✅ UniGuidePro: Proceeding with generation...');
     setLoading(true);
 
     try {
-      // Track usage for analytics only, not for limiting
+      // Track usage
       await trackUsage('useUniGuidePro');
 
       const userProfile = {
@@ -288,41 +340,116 @@ const UniGuidePro = () => {
       </Modal.Body>
     </Modal>
   );
-
   if (loading) {
     return (
-      <Container className="mt-4 text-center">
-        <Spinner animation="border" role="status">
-          <span className="sr-only">Generating your personalized roadmap...</span>
-        </Spinner>
-        <p className="mt-3">Generating your personalized study abroad roadmap...</p>
+      <Container className="mt-4 text-center py-5">
+        <div className="bg-white rounded-lg shadow-lg p-5">
+          <div className="flex justify-center mb-4">
+            <div className="animate-spin relative">
+              <FaGlobeAmericas className="text-blue-600" size={50} style={{ animation: 'pulse 2s infinite' }} />
+              <div className="absolute inset-0 rounded-full border-t-4 border-blue-500 border-opacity-50 animate-spin" style={{ animationDuration: '1.5s' }}></div>
+            </div>
+          </div>
+          
+          <h3 className="text-2xl font-bold text-blue-600 mb-3">Building Your Global Journey</h3>
+          <p className="text-lg text-gray-600 mb-4">Crafting your personalized study abroad roadmap...</p>
+          
+          <div className="w-3/4 mx-auto">
+            <ProgressBar animated now={75} variant="info" className="h-2 rounded-full" />
+          </div>
+          
+          <div className="mt-4 grid grid-cols-4 gap-4">
+            {['Analyzing preferences', 'Finding opportunities', 'Mapping journey', 'Creating timeline'].map((step, i) => (
+              <div key={i} className="text-center">
+                <div className={`w-3 h-3 rounded-full mx-auto mb-1 ${i <= 2 ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+                <p className="text-xs text-gray-500">{step}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </Container>
     );
-  }  return (
+  }  
+    return (
     <Container className="mt-4">
-      {/* Removed Subscription Status Banner since UniGuidePro is free for all users */}
-      
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1>
-          <FaGlobeAmericas className="mr-2" />
-          UniGuidePro - Study Abroad Roadmap
-        </h1>        {pathway && (
-          <Button 
-            variant="outline-primary" 
-            onClick={() => {
-              console.log('🔄 Generate New Roadmap clicked');
-              
-              // UniGuidePro is free for all users - show form without subscription check
-              console.log('✅ Generate New Roadmap: Showing form');
-              setShowForm(true);
-            }}
-            className="d-flex align-items-center"
-          >
-            Generate New Roadmap
-          </Button>
-        )}
-      </div>
-
+      {/* Hero Banner */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 rounded-xl shadow-2xl overflow-hidden"
+      >
+        <div className="p-5 md:p-8 text-white relative">
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
+            <div className="absolute w-40 h-40 rounded-full bg-white top-0 right-0"></div>
+            <div className="absolute w-20 h-20 rounded-full bg-blue-300 top-10 right-32"></div>
+          </div>
+          
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <div className="flex items-center">
+                <div className="mr-4 p-2 bg-white bg-opacity-20 rounded-full">
+                  <FaGlobeAmericas className="text-3xl text-white" />
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold">UniGuidePro</h1>
+                  {!loading && !subscriptionLoading && planType === 'free' && (
+                    <Badge 
+                      bg="warning" 
+                      className="ml-1 px-2 py-1 rounded-lg" 
+                      style={{ fontSize: '0.6em', verticalAlign: 'middle' }}
+                    >
+                      Trial Version
+                    </Badge>
+                  )}
+                </div>
+              </div>              <p className="text-blue-100 mt-2 text-lg font-light">Your AI-powered study abroad journey planner</p>
+              {!loading && !subscriptionLoading && limits && (
+                <div className="mt-1">
+                  {limits.uniGuideProUsage === -1 ? (
+                    <Badge variant="success" className="py-1 px-2">
+                      Unlimited Access
+                    </Badge>
+                  ) : (
+                    <Badge variant="info" className="py-1 px-2">
+                      {usage.uniGuideProUsage || 0}/{limits.uniGuideProUsage} Uses
+                    </Badge>
+                  )}                  <small className="text-muted ml-2">
+                    {planType === 'free' ? 'Free Plan' : planType === 'premium' ? 'Premium Plan' : 'Pro Plan'}
+                  </small>
+                </div>
+              )}
+            </div>
+            {pathway && (
+              <Button 
+                variant="outline-primary" 
+                onClick={() => {
+                  console.log('🔄 Generate New Roadmap clicked');
+                  
+                  // Check if the user can use UniGuidePro based on their subscription plan
+                  if (!canPerformAction('useUniGuidePro')) {
+                    console.log('⚠️ Generate New Roadmap: Usage limit reached');
+                    setAlert({
+                      show: true,
+                      message: 'You have reached your usage limit for UniGuidePro. Upgrade to Premium or Pro for more access.',
+                      variant: 'warning'
+                    });
+                    showUpgradePrompt('useUniGuidePro', () => setShowUpgradeModal(true));
+                    return;
+                  }
+                  
+                  console.log('✅ Generate New Roadmap: Showing form');
+                  setShowForm(true);
+                }}
+                className="d-flex align-items-center"
+              >
+                Generate New Roadmap
+              </Button>
+            )}
+          </div>
+        </div>
+      </motion.div>
       {alert.show && (
         <Alert 
           variant={alert.variant} 
@@ -330,6 +457,22 @@ const UniGuidePro = () => {
           dismissible
         >
           {alert.message}
+        </Alert>
+      )}
+      
+      {!loading && !subscriptionLoading && planType === 'free' && (
+        <Alert variant="info" className="mb-4">
+          <h5><FaInfoCircle className="mr-2" /> UniGuidePro Usage Limit</h5>
+          <p>As a free user, you can use UniGuidePro <strong>5 times per month</strong>. Upgrade to Premium for 10 uses per month or Pro for unlimited access.</p>
+          <div className="d-flex justify-content-end">
+            <Button 
+              variant="outline-primary" 
+              size="sm" 
+              onClick={() => setShowUpgradeModal(true)}
+            >
+              View Subscription Options
+            </Button>
+          </div>
         </Alert>
       )}
 
@@ -473,10 +616,22 @@ const UniGuidePro = () => {
                   type="submit" 
                   variant="primary" 
                   size="lg" 
-                  disabled={loading || subscriptionLoading}
+                  disabled={loading || subscriptionLoading || (!subscriptionLoading && !canPerformAction('useUniGuidePro'))}
                 >
                   {subscriptionLoading ? 'Loading...' : loading ? 'Generating...' : 'Generate My Roadmap'}
                 </Button>
+                
+                {!subscriptionLoading && limits && limits.uniGuideProUsage !== -1 && (
+                  <div className="mt-2 small text-muted">
+                    {Math.max(0, limits.uniGuideProUsage - (usage?.uniGuideProUsage || 0))} uses remaining
+                    {planType === 'free' && (
+                      <span> - <a href="#" onClick={(e) => {
+                        e.preventDefault();
+                        setShowUpgradeModal(true);
+                      }}>Upgrade for more</a></span>
+                    )}
+                  </div>
+                )}
               </div>
             </Form>
           </Card.Body>
@@ -718,8 +873,38 @@ const UniGuidePro = () => {
                   ));
                 })()}              </ul>
             </Card.Body>
-          </Card>
-
+          </Card>          {/* Usage Information */}
+          {!subscriptionLoading && limits && limits.uniGuideProUsage !== -1 && (
+            <Card className="mb-4 border-info">
+              <Card.Header className="bg-info text-white">
+                <h5 className="mb-0">
+                  <FaInfoCircle className="mr-2" />
+                  UniGuidePro Usage Information
+                </h5>
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col>
+                    <p><strong>Current Plan:</strong> {planType.charAt(0).toUpperCase() + planType.slice(1)}</p>
+                    <p><strong>Uses Remaining:</strong> {Math.max(0, limits.uniGuideProUsage - (usage?.uniGuideProUsage || 0))} of {limits.uniGuideProUsage}</p>
+                    {planType === 'free' && (
+                      <div>
+                        <p>Upgrade to Premium for 10 uses per month, or Pro for unlimited access.</p>
+                        <Button 
+                          variant="outline-info"
+                          size="sm"
+                          onClick={() => setShowUpgradeModal(true)}
+                        >
+                          View Subscription Options
+                        </Button>
+                      </div>
+                    )}
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          )}
+          
           {/* Detailed Analysis CTA */}
           <Card className="mb-4 border-2 border-warning">
             <Card.Header className="bg-gradient text-white" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
@@ -800,7 +985,9 @@ const UniGuidePro = () => {
               </Row>
             </Card.Body>
           </Card>
-        </div>)}      <StepModal />
+        </div>
+      )}
+      <StepModal />
       
       {/* Keep Subscription Plans Modal but only used for MyStudyPath access */}
       {showUpgradeModal && (

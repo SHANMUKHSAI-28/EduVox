@@ -28,7 +28,7 @@ export const useSubscriptionLimits = () => {
       console.log('⚠️ No limits in subscription data, using fallback limits');      const fallbackPlanLimits = {
         free: {
           pathwaysPerMonth: 1,
-          uniGuideProUsage: -1, // Free users get unlimited uses
+          uniGuideProUsage: 5, // Free users get 5 uses
           myStudyPathUsage: 0, // No access for free users
           universityComparisons: 3,
           pdfExports: 0,
@@ -37,7 +37,7 @@ export const useSubscriptionLimits = () => {
         },
         premium: {
           pathwaysPerMonth: -1,
-          uniGuideProUsage: -1,
+          uniGuideProUsage: 10, // Premium users get 10 uses
           myStudyPathUsage: -1, // Unlimited access for premium
           universityComparisons: 10,
           pdfExports: -1,
@@ -46,7 +46,7 @@ export const useSubscriptionLimits = () => {
         },
         pro: {
           pathwaysPerMonth: -1,
-          uniGuideProUsage: -1,
+          uniGuideProUsage: -1, // Unlimited access for pro
           myStudyPathUsage: -1,
           universityComparisons: -1,
           pdfExports: -1,
@@ -149,13 +149,21 @@ export const useSubscriptionLimits = () => {
             limit: 1,
             canDo: canGenerateDefault
           });
-          return canGenerateDefault;          case 'useUniGuidePro':
-          // All users get completely unlimited access to UniGuidePro
+          return canGenerateDefault;        case 'useUniGuidePro':
+          // Check if free users have reached their limit
+          const planType = subscriptionData?.planType || 'free';
+          const usageLimit = planType === 'free' ? 5 : planType === 'premium' ? 10 : -1;
+          const currentUsage = defaultFreeUsage.uniGuideProUsage || 0;
+          const canUse = usageLimit === -1 || currentUsage < usageLimit;
+          
           console.log('🎓 Loading state - UniGuidePro check:', {
-            canDo: true,
-            message: 'Always freely accessible to everyone'
+            planType,
+            usageLimit,
+            currentUsage,
+            canDo: canUse,
+            message: canUse ? 'Access granted' : 'Usage limit reached'
           });
-          return true;
+          return canUse;
 
           case 'useMyStudyPath':
           // MyStudyPath is a premium feature - requires paid plan
@@ -197,12 +205,19 @@ export const useSubscriptionLimits = () => {
           canDo: canGeneratePathway
         });
         return canGeneratePathway;        case 'useUniGuidePro':
-        // All users get completely unlimited access to UniGuidePro
+        // Check usage limits based on plan type
+        const uniGuideLimit = limits.uniGuideProUsage;
+        const uniGuideUsage = usage.uniGuideProUsage || 0;
+        const canUseUniGuide = uniGuideLimit === -1 || uniGuideUsage < uniGuideLimit;
+        
         console.log('🎓 useUniGuidePro check:', {
-          canDo: true,
-          message: 'Always freely accessible to everyone'
+          limit: uniGuideLimit,
+          usage: uniGuideUsage,
+          planType: subscriptionData?.planType || 'free',
+          canDo: canUseUniGuide,
+          message: canUseUniGuide ? 'Access granted' : 'Usage limit reached'
         });
-        return true;
+        return canUseUniGuide;
 
         case 'useMyStudyPath':
         // MyStudyPath requires paid plan (Premium or Pro)
@@ -288,10 +303,9 @@ export const useSubscriptionLimits = () => {
         switch (action) {
         case 'generatePathway':
           success = await subscriptionService.trackPathwayGeneration(currentUser.uid);
-          break;
-          case 'useUniGuidePro':
-          // No need to track usage for UniGuidePro since it's freely accessible
-          success = true;
+          break;          case 'useUniGuidePro':
+          // Track usage for UniGuidePro
+          success = await subscriptionService.trackUniGuideProUsage(currentUser.uid);
           break;
         
         case 'useMyStudyPath':
@@ -349,13 +363,10 @@ export const useSubscriptionLimits = () => {
 
     return Math.min(100, (used / limit) * 100);
   };  // Show upgrade prompt
-  const showUpgradePrompt = (action, onUpgrade) => {
-    // Never show upgrade prompt for UniGuidePro
-    if (action === 'useUniGuidePro') return;
-
-    const actionNames = {
+  const showUpgradePrompt = (action, onUpgrade) => {    const actionNames = {
       generatePathway: 'generate more study abroad pathways',
       pathway_generation: 'generate more study abroad pathways',
+      useUniGuidePro: 'use UniGuidePro more times',
       useMyStudyPath: 'access MyStudyAbroadPath features',
       compareUniversities: 'compare more universities',
       exportPdf: 'export documents as PDF',

@@ -1,0 +1,283 @@
+/* UniGuidePro.css - Advanced styling for the UniGuidePro component */
+
+.uniguide-container {
+  max-width: 1200px;
+}
+
+/* Enhanced Hero Banner */
+.hero-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.hero-banner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+  opacity: 0.4;
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Glowing icon effect */
+.icon-glow {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+}
+
+/* Enhanced Form Cards */
+.form-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.form-card:hover {
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  transform: translateY(-5px);
+}
+
+/* Custom Form Controls */
+.custom-form-control {
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+
+.custom-form-control:focus {
+  box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+  border-color: #4299e1;
+}
+
+/* Generate Button Styling */
+.generate-button {
+  background: linear-gradient(135deg, #4299e1 0%, #667eea 50%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 4px 12px rgba(104, 117, 245, 0.3);
+  transition: all 0.3s ease;
+}
+
+.generate-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(104, 117, 245, 0.5);
+}
+
+.generate-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(104, 117, 245, 0.4);
+}
+
+/* Enhanced Cards */
+.pathway-card {
+  border-radius: 12px;
+  border: none;
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.pathway-card:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.card-header-custom {
+  background: linear-gradient(to right, #4299e1, #667eea);
+  color: white;
+  border-bottom: none;
+  padding: 16px 20px;
+  font-weight: 600;
+}
+
+/* Step Cards */
+.step-item {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.step-item:hover {
+  border-color: #4299e1;
+  box-shadow: 0 2px 12px rgba(66, 153, 225, 0.15);
+}
+
+.step-header {
+  background-color: #f8fafc;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.status-badge-completed {
+  background-color: rgba(72, 187, 120, 0.1);
+  color: #48bb78;
+}
+
+.status-badge-progress {
+  background-color: rgba(237, 137, 54, 0.1);
+  color: #ed8936;
+}
+
+.status-badge-pending {
+  background-color: rgba(160, 174, 192, 0.1);
+  color: #a0aec0;
+}
+
+/* Progress bar styling */
+.progress-custom {
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background-color: #edf2f7;
+}
+
+.progress-bar-custom {
+  background: linear-gradient(to right, #4299e1, #48bb78);
+  border-radius: 5px;
+}
+
+/* Animation for the Steps */
+.step-appear {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.step-appear-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Premium CTA Card */
+.premium-cta {
+  border: none;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #7f9cf5 0%, #6875f5 50%, #5a67d8 100%);
+  box-shadow: 0 15px 30px rgba(90, 103, 216, 0.3);
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.premium-cta:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(90, 103, 216, 0.4);
+}
+
+.premium-button {
+  background: white;
+  color: #5a67d8;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.premium-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  background-color: #f7fafc;
+}
+
+/* Loading animation */
+.loading-spinner {
+  display: inline-block;
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.loading-spinner div {
+  position: absolute;
+  border: 4px solid #4299e1;
+  opacity: 1;
+  border-radius: 50%;
+  animation: loading-spinner 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.loading-spinner div:nth-child(2) {
+  animation-delay: -0.5s;
+}
+
+@keyframes loading-spinner {
+  0% {
+    top: 36px;
+    left: 36px;
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+  4.9% {
+    top: 36px;
+    left: 36px;
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+  5% {
+    top: 36px;
+    left: 36px;
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    top: 0px;
+    left: 0px;
+    width: 72px;
+    height: 72px;
+    opacity: 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-banner {
+    border-radius: 12px;
+  }
+  
+  .form-card {
+    margin-bottom: 1.5rem;
+  }
+  
+  .pathway-card {
+    margin-bottom: 1.5rem;
+  }
+}
