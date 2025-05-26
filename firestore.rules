@@ -115,8 +115,7 @@ service cloud.firestore {
       
       // Allow admins to read all user pathways
       allow read, write: if isAdmin();    }
-    
-    // Pathways collection rules (for pre-scraped pathways)
+      // Pathways collection rules (for pre-scraped pathways)
     match /pathways/{pathwayId} {
       // Allow authenticated users to read pathways
       allow read: if isAuthenticated();
@@ -126,6 +125,34 @@ service cloud.firestore {
       
       // Allow pathway scraping service to write pathways (for admin users)
       allow write: if isAdmin();
+    }
+    
+    // Subscription collection rules
+    match /subscriptions/{userId} {
+      // Allow users to read and write their own subscription data
+      allow read, write: if isOwner(userId);
+      
+      // Allow admins to read and write all subscription data
+      allow read, write: if isAdmin();
+    }
+    
+    // Subscription plans collection rules
+    match /subscriptionPlans/{planId} {
+      // Allow authenticated users to read subscription plans
+      allow read: if isAuthenticated();
+      
+      // Allow admins to manage subscription plans
+      allow write: if isAdmin();
+    }
+    
+    // Subscription transactions collection rules
+    match /subscriptionTransactions/{transactionId} {
+      // Allow users to read their own transactions
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Allow admins to read and write all transactions
+      allow read, write: if isAdmin();
     }
     
     // Default rule: deny all other access

@@ -7,12 +7,11 @@ import StudyAbroadWidget from '../components/features/StudyAbroadWidget';
 import { academicProfileService, savedUniversitiesService } from '../services/universityService';
 import { FaCrown, FaStar, FaRocket } from 'react-icons/fa';
 
-const Dashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+const Dashboard = () => {  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileCompletion, setProfileCompletion] = useState(0);
   const [savedUniversitiesCount, setSavedUniversitiesCount] = useState(0);
   const { userData, currentUser } = useAuth();
-  const { planType, usage, limits } = useSubscriptionLimits();
+  const { planType, usage, limits, loading: subscriptionLoading } = useSubscriptionLimits();
 
   useEffect(() => {
     if (currentUser) {
@@ -250,19 +249,24 @@ const Dashboard = () => {
                           Upgrade Now
                         </a>
                       </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    </div>                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="bg-white/50 rounded-lg p-3 border border-amber-100">
                         <div className="text-sm font-medium text-amber-900">University Comparisons</div>
-                        <div className="text-xs text-amber-600">{usage.universitiesCompared}/{limits.universitiesCompared} used</div>
+                        <div className="text-xs text-amber-600">
+                          {usage ? `${usage.universitiesCompared || 0}/${limits?.universitiesCompared || 0}` : '0/0'} used
+                        </div>
                       </div>
                       <div className="bg-white/50 rounded-lg p-3 border border-amber-100">
                         <div className="text-sm font-medium text-amber-900">Pathway Generation</div>
-                        <div className="text-xs text-amber-600">{usage.pathwaysGenerated}/{limits.pathwaysPerMonth} used</div>
+                        <div className="text-xs text-amber-600">
+                          {usage ? `${usage.pathwaysGenerated || 0}/${limits?.pathwaysPerMonth || 0}` : '0/0'} used
+                        </div>
                       </div>
                       <div className="bg-white/50 rounded-lg p-3 border border-amber-100">
                         <div className="text-sm font-medium text-amber-900">PDF Exports</div>
-                        <div className="text-xs text-amber-600">{usage.pdfExports}/{limits.pdfExports} used</div>
+                        <div className="text-xs text-amber-600">
+                          {usage ? `${usage.pdfExports || 0}/${limits?.pdfExports || 0}` : '0/0'} used
+                        </div>
                       </div>
                     </div>
                   </div>

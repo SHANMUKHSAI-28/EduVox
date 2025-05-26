@@ -108,23 +108,20 @@ const MyStudyAbroadPath = () => {
       const value = profile[field];
       return value && value !== '' && (Array.isArray(value) ? value.length > 0 : true);
     });
-  };
-  const generatePersonalizedPath = async (profile = userProfile) => {
+  };  const generatePersonalizedPath = async (profile = userProfile) => {
     if (!profile) return;
 
-    // Check subscription limits for pathway generation
-    if (!canPerformAction('generatePathway')) {
-      showUpgradePrompt('generatePathway', () => setShowUpgradeModal(true));
+    // Check subscription limits for MyStudyPath usage
+    if (!canPerformAction('useMyStudyPath')) {
+      showUpgradePrompt('useMyStudyPath', () => setShowUpgradeModal(true));
       return;
     }
 
     console.log('🚀 Generating personalized path for profile:', profile);
     setGeneratingPath(true);
-    setAlert(null);
-
-    try {
+    setAlert(null);    try {
       // Track usage before generating
-      const tracked = await trackUsage('generatePathway');
+      const tracked = await trackUsage('useMyStudyPath');
       if (!tracked) {
         setAlert({
           type: 'error',
@@ -218,10 +215,9 @@ const MyStudyAbroadPath = () => {
     }
   };  const regeneratePathway = async () => {
     if (!userProfile) return;
-    
-    // Check subscription limits for pathway regeneration
-    if (!canPerformAction('generatePathway')) {
-      showUpgradePrompt('generatePathway', () => setShowUpgradeModal(true));
+      // Check subscription limits for pathway regeneration
+    if (!canPerformAction('useMyStudyPath')) {
+      showUpgradePrompt('useMyStudyPath', () => setShowUpgradeModal(true));
       return;
     }
     
@@ -231,10 +227,9 @@ const MyStudyAbroadPath = () => {
       message: 'Refreshing your pathway with the latest information...',
       icon: <FaSync className="animate-spin" />
     });
-    
-    try {
+      try {
       // Track usage for regeneration
-      const tracked = await trackUsage('generatePathway');
+      const tracked = await trackUsage('useMyStudyPath');
       if (!tracked) {
         setAlert({
           type: 'error',

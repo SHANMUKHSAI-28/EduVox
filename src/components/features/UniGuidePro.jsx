@@ -88,10 +88,9 @@ const UniGuidePro = () => {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Check subscription limits for pathway generation
-    if (!canPerformAction('generatePathway')) {
-      showUpgradePrompt('generatePathway', () => setShowUpgradeModal(true));
+      // Check subscription limits for UniGuidePro usage
+    if (!canPerformAction('useUniGuidePro')) {
+      showUpgradePrompt('useUniGuidePro', () => setShowUpgradeModal(true));
       return;
     }
 
@@ -99,7 +98,7 @@ const UniGuidePro = () => {
 
     try {
       // Track usage before generating pathway
-      const tracked = await trackUsage('generatePathway');
+      const tracked = await trackUsage('useUniGuidePro');
       if (!tracked) {
         setAlert({
           show: true,
@@ -306,12 +305,11 @@ const UniGuidePro = () => {
         <h1>
           <FaGlobeAmericas className="mr-2" />
           UniGuidePro - Study Abroad Roadmap
-        </h1>
-        {pathway && (
+        </h1>        {pathway && (
           <Button 
             variant="outline-primary" 
             onClick={() => {
-              if (!canPerformAction('generatePathway')) {
+              if (!canPerformAction('useUniGuidePro')) {
                 setShowUpgradeModal(true);
                 return;
               }

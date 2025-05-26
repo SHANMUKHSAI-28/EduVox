@@ -473,7 +473,71 @@ class SubscriptionService {
     } catch (error) {
       console.error('Error cancelling subscription:', error);
       throw new Error('Failed to cancel subscription');
+    }  }
+
+  /**
+   * Track usage for various actions
+   */
+  async trackUsage(userId, usageType) {
+    try {
+      const subscriptionRef = doc(db, this.subscriptionsCollection, userId);
+      const subscriptionDoc = await getDoc(subscriptionRef);
+      
+      if (!subscriptionDoc.exists()) {
+        await this.createFreeSubscription(userId);
+      }
+      
+      const currentUsage = subscriptionDoc.exists() ? subscriptionDoc.data().usage || {} : {};
+      const updatedUsage = {
+        ...currentUsage,
+        [usageType]: (currentUsage[usageType] || 0) + 1
+      };
+      
+      await updateDoc(subscriptionRef, {
+        usage: updatedUsage,
+        updatedAt: serverTimestamp()
+      });
+      
+      return true;
+    } catch (error) {
+      console.error(`Error tracking ${usageType} usage:`, error);
+      return false;
     }
+  }
+
+  /**
+   * Track pathway generation usage
+   */
+  async trackPathwayGeneration(userId) {
+    return await this.trackUsage(userId, 'pathwaysGenerated');
+  }
+
+  /**
+   * Track UniGuidePro usage
+   */
+  async trackUniGuideProUsage(userId) {
+    return await this.trackUsage(userId, 'uniGuideProUsage');
+  }
+
+  /**
+   * Track MyStudyPath usage
+   */
+  async trackMyStudyPathUsage(userId) {
+    return await this.trackUsage(userId, 'myStudyPathUsage');
+  }
+
+  /**
+   * Track university comparison usage
+   */
+  async trackUniversityComparison(userId) {
+    return await this.trackUsage(userId, 'universityComparisons');
+  }
+
+  /**
+   * Track PDF export usage
+   */
+  async trackPdfExport(userId) {
+    return await this.trackUsage(userId, 'pdfExports');
   }
 
   /**

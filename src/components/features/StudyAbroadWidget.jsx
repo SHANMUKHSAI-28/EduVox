@@ -52,10 +52,9 @@ const StudyAbroadWidget = () => {
     if (!pathway || !pathway.steps) return null;
     return pathway.steps.find(step => step.status === 'pending' || step.status === 'in-progress');
   };
-
   // Check if user can create/view pathways
   const canCreatePathway = canPerformAction('pathway_generation');
-  const pathwayLimitReached = usage.pathwaysGenerated >= limits.pathwaysPerMonth;
+  const pathwayLimitReached = usage && limits ? usage.pathwaysGenerated >= limits.pathwaysPerMonth : false;
 
   // Subscription status component
   const SubscriptionStatus = () => {
@@ -64,9 +63,8 @@ const StudyAbroadWidget = () => {
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
           <div className="flex items-center">
             <FaCrown className="text-amber-500 mr-2" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-amber-800">
-                Monthly limit reached ({usage.pathwaysGenerated}/{limits.pathwaysPerMonth} pathways)
+            <div className="flex-1">              <p className="text-sm font-medium text-amber-800">
+                Monthly limit reached ({usage?.pathwaysGenerated || 0}/{limits?.pathwaysPerMonth || 0} pathways)
               </p>
               <p className="text-xs text-amber-600">
                 Upgrade to Premium for unlimited pathway generation
