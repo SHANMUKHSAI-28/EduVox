@@ -38,7 +38,8 @@ const UniGuidePro = () => {
     showUpgradePrompt, 
     limits, 
     usage, 
-    planType 
+    planType,
+    loading: subscriptionLoading 
   } = useSubscriptionLimits();
   
   const [loading, setLoading] = useState(false);
@@ -93,31 +94,27 @@ const UniGuidePro = () => {
       limits,
       usage,
       planType,
-      canUseUniGuidePro: canPerformAction('useUniGuidePro')
+      subscriptionLoading
     });
     
-    // Check subscription limits for UniGuidePro usage
-    if (!canPerformAction('useUniGuidePro')) {
-      console.log('❌ UniGuidePro: Cannot perform action, showing upgrade prompt');
-      showUpgradePrompt('useUniGuidePro', () => setShowUpgradeModal(true));
+    // Wait for subscription data to load
+    if (subscriptionLoading) {
+      console.log('⏳ UniGuidePro: Subscription data still loading, please wait...');
+      setAlert({
+        show: true,
+        message: 'Loading your subscription details, please wait...',
+        variant: 'info'
+      });
       return;
     }
-
-    console.log('✅ UniGuidePro: Can perform action, proceeding...');
+    
+    // UniGuidePro is free for all users - proceed without subscription check
+    console.log('✅ UniGuidePro: Proceeding with generation...');
     setLoading(true);
 
     try {
-      // Track usage before generating pathway
-      const tracked = await trackUsage('useUniGuidePro');
-      if (!tracked) {
-        setAlert({
-          show: true,
-          message: 'Failed to track usage. Please try again.',
-          variant: 'danger'
-        });
-        setLoading(false);
-        return;
-      }
+      // Track usage for analytics only, not for limiting
+      await trackUsage('useUniGuidePro');
 
       const userProfile = {
         userId: currentUser.uid,
@@ -131,7 +128,7 @@ const UniGuidePro = () => {
       setShowForm(false);
       setAlert({
         show: true,
-        message: 'Your personalized study abroad roadmap has been generated!',
+        message: 'Your basic study abroad roadmap has been generated! Upgrade for detailed analysis.',
         variant: 'success'
       });
       
@@ -301,15 +298,9 @@ const UniGuidePro = () => {
         <p className="mt-3">Generating your personalized study abroad roadmap...</p>
       </Container>
     );
-  }
-  return (
+  }  return (
     <Container className="mt-4">
-      {/* Subscription Status Banner */}
-      <SubscriptionStatus 
-        className="mb-4"
-        showUsage={true}
-        featureName="pathway generation"
-      />
+      {/* Removed Subscription Status Banner since UniGuidePro is free for all users */}
       
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>
@@ -319,25 +310,14 @@ const UniGuidePro = () => {
           <Button 
             variant="outline-primary" 
             onClick={() => {
-              console.log('🔄 Generate New Roadmap clicked - Debug Info:', {
-                limits,
-                usage,
-                planType,
-                canUseUniGuidePro: canPerformAction('useUniGuidePro')
-              });
+              console.log('🔄 Generate New Roadmap clicked');
               
-              if (!canPerformAction('useUniGuidePro')) {
-                console.log('❌ Generate New Roadmap: Cannot perform action, showing upgrade modal');
-                setShowUpgradeModal(true);
-                return;
-              }
-              
-              console.log('✅ Generate New Roadmap: Can perform action, showing form');
+              // UniGuidePro is free for all users - show form without subscription check
+              console.log('✅ Generate New Roadmap: Showing form');
               setShowForm(true);
             }}
             className="d-flex align-items-center"
           >
-            {planType === 'free' && <FaCrown className="mr-2 text-warning" />}
             Generate New Roadmap
           </Button>
         )}
@@ -488,11 +468,14 @@ const UniGuidePro = () => {
                     />
                   </Form.Group>
                 </Col>
-              </Row>
-
-              <div className="text-center">
-                <Button type="submit" variant="primary" size="lg" disabled={loading}>
-                  {loading ? 'Generating...' : 'Generate My Roadmap'}
+              </Row>              <div className="text-center">
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  size="lg" 
+                  disabled={loading || subscriptionLoading}
+                >
+                  {subscriptionLoading ? 'Loading...' : loading ? 'Generating...' : 'Generate My Roadmap'}
                 </Button>
               </div>
             </Form>
@@ -733,19 +716,96 @@ const UniGuidePro = () => {
                   return tips.map((tip, index) => (
                     <li key={index}>{tip}</li>
                   ));
-                })()}
-              </ul>
+                })()}              </ul>
             </Card.Body>
           </Card>
-        </div>      )}
 
-      <StepModal />
+          {/* Detailed Analysis CTA */}
+          <Card className="mb-4 border-2 border-warning">
+            <Card.Header className="bg-gradient text-white" style={{background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'}}>
+              <h5 className="mb-0">
+                <FaCrown className="mr-2" />
+                Get Detailed AI-Powered Analysis
+              </h5>
+            </Card.Header>
+            <Card.Body>
+              <Row>
+                <Col md={8}>
+                  <h6 className="text-primary">Unlock Complete Study Abroad Guidance</h6>
+                  <ul className="text-muted mb-3">
+                    <li>📋 Detailed document checklist with deadlines</li>
+                    <li>💰 Exact cost breakdown by city and university</li>
+                    <li>🏠 Living cost analysis and accommodation options</li>
+                    <li>📝 Visa requirements and application timeline</li>
+                    <li>🎓 University recommendations based on your profile</li>
+                    <li>🤖 AI-powered personalized roadmap</li>
+                  </ul>
+                  <p className="small text-muted">
+                    Our AI will analyze your complete profile and create a detailed, 
+                    step-by-step plan tailored specifically for your goals.
+                  </p>
+                </Col>
+                <Col md={4} className="text-center">                  <Button
+                    size="lg"
+                    className="btn-gradient px-4 py-2"
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      border: 'none',
+                      color: 'white'
+                    }}
+                    onClick={async () => {
+                      if (!canPerformAction('useMyStudyPath')) {
+                        setAlert({
+                          show: true,
+                          message: 'Upgrade to Premium to access detailed AI-powered analysis!',
+                          variant: 'warning'
+                        });
+                        setShowUpgradeModal(true);
+                        return;
+                      }
+                      
+                      try {
+                        // Save the current pathway for detailed analysis
+                        await studyAbroadService.saveSelectedPathway(currentUser.uid, pathway);
+                        
+                        setAlert({
+                          show: true,
+                          message: 'Pathway selected! Redirecting to detailed AI analysis...',
+                          variant: 'success'
+                        });
+                        
+                        // Navigate to detailed analysis after a short delay
+                        setTimeout(() => {
+                          window.location.href = '/my-study-abroad-path';
+                        }, 1500);
+                      } catch (error) {
+                        console.error('Error saving selected pathway:', error);
+                        setAlert({
+                          show: true,
+                          message: 'Failed to save pathway. Please try again.',
+                          variant: 'danger'
+                        });
+                      }
+                    }}
+                  >
+                    <FaCrown className="mr-2" />
+                    Select for Detailed Analysis
+                  </Button>
+                  <div className="mt-2">
+                    <Badge variant="warning" className="px-3 py-1">
+                      Premium Feature
+                    </Badge>
+                  </div>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+        </div>)}      <StepModal />
       
-      {/* Subscription Plans Modal */}
-      <SubscriptionPlans 
-        show={showUpgradeModal}
-        onHide={() => setShowUpgradeModal(false)}
-      />
+      {/* Keep Subscription Plans Modal but only used for MyStudyPath access */}
+      {showUpgradeModal && (
+        <SubscriptionPlans onClose={() => setShowUpgradeModal(false)} />
+      )}
     </Container>
   );
 };

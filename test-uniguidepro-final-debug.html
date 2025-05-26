@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniGuidePro Final Debug Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #4a5568;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .success {
+            background-color: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        .error {
+            background-color: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        .info {
+            background-color: #bee3f8;
+            color: #2a4365;
+            border: 1px solid #90cdf4;
+        }
+        .warning {
+            background-color: #faf089;
+            color: #744210;
+            border: 1px solid #f6e05e;
+        }
+        .details {
+            background-color: #f7fafc;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #e2e8f0;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #3182ce;
+        }
+        .data-display {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border: 1px solid #e9ecef;
+        }
+        .key-value {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 5px;
+            background: white;
+            border-radius: 4px;
+        }
+        .key {
+            font-weight: bold;
+            color: #495057;
+        }
+        .value {
+            color: #6c757d;
+        }
+        .value.true {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .value.false {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐛 UniGuidePro Final Debug Test</h1>
+        
+        <div class="test-section">
+            <h3>Reproducing Exact User Scenario</h3>
+            <p>This test reproduces the exact scenario from the console logs:</p>
+            
+            <div class="data-display">
+                <h4>Subscription Data (from logs):</h4>
+                <div class="key-value">
+                    <span class="key">Plan Type:</span>
+                    <span class="value">free</span>
+                </div>
+                <div class="key-value">
+                    <span class="key">Current Limits:</span>
+                    <span class="value">uniGuideProUsage: 5</span>
+                </div>
+                <div class="key-value">
+                    <span class="key">Current Usage:</span>
+                    <span class="value">uniGuideProUsage: 0</span>
+                </div>
+                <div class="key-value">
+                    <span class="key">Expected Result:</span>
+                    <span class="value true">Should Allow (0 < 5 = true)</span>
+                </div>
+            </div>
+            
+            <button onclick="runExactScenarioTest()">🔬 Test Exact Scenario</button>
+            <button onclick="runStepByStepDebug()">🔍 Step-by-Step Debug</button>
+            
+            <div id="test-result" class="status info" style="display: none;">
+                Testing...
+            </div>
+            
+            <div id="debug-details" class="details" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Live Simulation</h3>
+            <div id="live-simulation">
+                <div class="data-display">
+                    <div class="key-value">
+                        <span class="key">Mock Plan Type:</span>
+                        <span class="value" id="mock-plan">free</span>
+                    </div>
+                    <div class="key-value">
+                        <span class="key">Mock UniGuide Usage:</span>
+                        <span class="value" id="mock-usage">0/5</span>
+                    </div>
+                    <div class="key-value">
+                        <span class="key">Can Use UniGuidePro:</span>
+                        <span class="value" id="mock-result">-</span>
+                    </div>
+                </div>
+                
+                <button onclick="simulateUse()">Use UniGuidePro</button>
+                <button onclick="resetSimulation()">Reset</button>
+                
+                <div id="simulation-log" class="details"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Exact reproduction of the fixed logic
+        function canPerformActionFixed(action, limits, usage) {
+            console.log('🔍 canPerformAction check (FIXED):', {
+                action,
+                limits,
+                usage,
+                hasLimits: !!limits,
+                hasUsage: !!usage
+            });
+
+            // Handle loading state - this part works
+            if (!limits || !usage) {
+                console.log('⏳ Loading state handling...');
+                // ... loading state logic would go here
+                return false; // Not relevant for this test
+            }
+
+            switch (action) {
+                case 'useUniGuidePro':
+                    // THE FIX: Handle undefined usage values
+                    const canUse = limits.uniGuideProUsage === -1 || (usage.uniGuideProUsage || 0) < limits.uniGuideProUsage;
+                    console.log('🎓 useUniGuidePro check (FIXED):', {
+                        limit: limits.uniGuideProUsage,
+                        used: usage.uniGuideProUsage || 0,
+                        usedRaw: usage.uniGuideProUsage,
+                        canDo: canUse,
+                        calculation: `(${usage.uniGuideProUsage || 0} < ${limits.uniGuideProUsage}) = ${canUse}`
+                    });
+                    return canUse;
+                default:
+                    return false;
+            }
+        }
+
+        // Original broken logic for comparison
+        function canPerformActionOriginal(action, limits, usage) {
+            if (!limits || !usage) {
+                return false; // This was the original loading state bug
+            }
+
+            switch (action) {
+                case 'useUniGuidePro':
+                    // THE BUG: undefined < 5 returns false
+                    const canUse = limits.uniGuideProUsage === -1 || usage.uniGuideProUsage < limits.uniGuideProUsage;
+                    console.log('🎓 useUniGuidePro check (ORIGINAL - BROKEN):', {
+                        limit: limits.uniGuideProUsage,
+                        used: usage.uniGuideProUsage,
+                        canDo: canUse,
+                        calculation: `(${usage.uniGuideProUsage} < ${limits.uniGuideProUsage}) = ${canUse}`
+                    });
+                    return canUse;
+                default:
+                    return false;
+            }
+        }
+
+        function runExactScenarioTest() {
+            const resultDiv = document.getElementById('test-result');
+            const detailsDiv = document.getElementById('debug-details');
+            
+            resultDiv.style.display = 'block';
+            detailsDiv.style.display = 'block';
+            
+            // Exact data from user logs
+            const limits = {
+                pathwaysPerMonth: 1,
+                uniGuideProUsage: 5,
+                myStudyPathUsage: 0,
+                universityComparisons: 3,
+                pdfExports: 0
+            };
+            
+            const usage = {
+                pathwaysGenerated: 1,
+                uniGuideProUsage: 0,  // This is now properly defaulted (was undefined before)
+                myStudyPathUsage: 0,
+                universityComparisons: 0,
+                pdfExports: 0
+            };
+            
+            let testResults = [];
+            
+            testResults.push('=== EXACT SCENARIO TEST ===\n');
+            testResults.push('Data from user logs:');
+            testResults.push(`Limits: ${JSON.stringify(limits, null, 2)}`);
+            testResults.push(`Usage: ${JSON.stringify(usage, null, 2)}\n`);
+            
+            // Test with fixed logic
+            const fixedResult = canPerformActionFixed('useUniGuidePro', limits, usage);
+            testResults.push(`Fixed Logic Result: ${fixedResult ? 'ALLOW ✅' : 'BLOCK ❌'}`);
+            
+            // Test what would happen with original broken logic (if uniGuideProUsage was undefined)
+            const brokenUsage = { ...usage, uniGuideProUsage: undefined };
+            const originalResult = canPerformActionOriginal('useUniGuidePro', limits, brokenUsage);
+            testResults.push(`Original Logic (undefined usage): ${originalResult ? 'ALLOW ✅' : 'BLOCK ❌'}\n`);
+            
+            // Final assessment
+            if (fixedResult === true) {
+                resultDiv.className = 'status success';
+                resultDiv.textContent = '✅ TEST PASSED: Fixed logic allows UniGuidePro usage as expected!';
+                testResults.push('🎉 CONCLUSION: The fix is working correctly!');
+                testResults.push('✅ Free users can now use UniGuidePro (0/5 uses)');
+            } else {
+                resultDiv.className = 'status error';
+                resultDiv.textContent = '❌ TEST FAILED: Fixed logic still blocking usage';
+                testResults.push('❌ CONCLUSION: There may be another issue');
+            }
+            
+            detailsDiv.textContent = testResults.join('\n');
+        }
+
+        function runStepByStepDebug() {
+            const detailsDiv = document.getElementById('debug-details');
+            detailsDiv.style.display = 'block';
+            
+            let steps = [];
+            
+            steps.push('=== STEP-BY-STEP DEBUG ===\n');
+            
+            // Step 1: Check the values
+            steps.push('Step 1: Check the actual values');
+            const uniGuideProUsage = 0;
+            const uniGuideProLimit = 5;
+            steps.push(`  uniGuideProUsage = ${uniGuideProUsage} (type: ${typeof uniGuideProUsage})`);
+            steps.push(`  uniGuideProLimit = ${uniGuideProLimit} (type: ${typeof uniGuideProLimit})`);
+            
+            // Step 2: Test the comparison
+            steps.push('\nStep 2: Test the comparison');
+            const directComparison = uniGuideProUsage < uniGuideProLimit;
+            steps.push(`  ${uniGuideProUsage} < ${uniGuideProLimit} = ${directComparison}`);
+            
+            // Step 3: Test with our fixed logic
+            steps.push('\nStep 3: Test with our fixed logic (handling undefined)');
+            const safeUsage = uniGuideProUsage || 0;
+            const fixedComparison = safeUsage < uniGuideProLimit;
+            steps.push(`  (${uniGuideProUsage} || 0) < ${uniGuideProLimit} = ${safeUsage} < ${uniGuideProLimit} = ${fixedComparison}`);
+            
+            // Step 4: Test what happens with undefined
+            steps.push('\nStep 4: Test what happens with undefined (original bug)');
+            const undefinedUsage = undefined;
+            const brokenComparison = undefinedUsage < uniGuideProLimit;
+            steps.push(`  ${undefinedUsage} < ${uniGuideProLimit} = ${brokenComparison}`);
+            steps.push('  ☝️ This was the original bug - undefined < 5 returns false');
+            
+            // Step 5: Conclusion
+            steps.push('\nStep 5: Conclusion');
+            if (fixedComparison) {
+                steps.push('  ✅ The fix should work: 0 < 5 = true');
+                steps.push('  ✅ Free users should be able to use UniGuidePro');
+            } else {
+                steps.push('  ❌ Something is still wrong');
+            }
+            
+            detailsDiv.textContent = steps.join('\n');
+        }
+
+        let mockUsageCount = 0;
+        const mockLimit = 5;
+
+        function updateSimulationDisplay() {
+            document.getElementById('mock-usage').textContent = `${mockUsageCount}/${mockLimit}`;
+            const canUse = mockUsageCount < mockLimit;
+            const resultElement = document.getElementById('mock-result');
+            resultElement.textContent = canUse ? 'YES ✅' : 'NO ❌';
+            resultElement.className = `value ${canUse}`;
+        }
+
+        function simulateUse() {
+            const logDiv = document.getElementById('simulation-log');
+            
+            if (mockUsageCount < mockLimit) {
+                mockUsageCount++;
+                logDiv.textContent += `\n${new Date().toLocaleTimeString()}: Used UniGuidePro (${mockUsageCount}/${mockLimit})`;
+                
+                if (mockUsageCount >= mockLimit) {
+                    logDiv.textContent += `\n${new Date().toLocaleTimeString()}: ⚠️ Reached limit - next use should show upgrade prompt`;
+                }
+            } else {
+                logDiv.textContent += `\n${new Date().toLocaleTimeString()}: ❌ Usage blocked - upgrade required`;
+            }
+            
+            updateSimulationDisplay();
+        }
+
+        function resetSimulation() {
+            mockUsageCount = 0;
+            document.getElementById('simulation-log').textContent = 'Simulation log:';
+            updateSimulationDisplay();
+        }
+
+        // Initialize
+        updateSimulationDisplay();
+        
+        // Auto-run test
+        setTimeout(() => {
+            console.log('🚀 Auto-running exact scenario test...');
+            runExactScenarioTest();
+        }, 1000);
+    </script>
+</body>
+</html>

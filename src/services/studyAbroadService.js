@@ -2299,6 +2299,223 @@ class StudyAbroadService {
       throw new Error('Failed to create even basic fallback pathway');
     }
   }
+
+  /**
+   * Save selected pathway from UniGuidePro for detailed analysis
+   * @param {string} userId - User ID
+   * @param {Object} pathway - Selected pathway from UniGuidePro
+   */
+  async saveSelectedPathway(userId, pathway) {
+    try {
+      const selectedPathwayRef = doc(db, 'selectedPathways', userId);
+      await setDoc(selectedPathwayRef, {
+        pathway: pathway,
+        selectedAt: new Date().toISOString(),
+        processed: false
+      });
+      console.log('✅ Selected pathway saved for detailed analysis');
+    } catch (error) {
+      console.error('Error saving selected pathway:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get selected pathway from UniGuidePro
+   * @param {string} userId - User ID
+   * @returns {Object|null} - Selected pathway or null
+   */
+  async getSelectedPathway(userId) {
+    try {
+      const selectedPathwayRef = doc(db, 'selectedPathways', userId);
+      const docSnap = await getDoc(selectedPathwayRef);
+      
+      if (docSnap.exists() && !docSnap.data().processed) {
+        return docSnap.data().pathway;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting selected pathway:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear selected pathway flag after processing
+   * @param {string} userId - User ID
+   */
+  async clearSelectedPathway(userId) {
+    try {
+      const selectedPathwayRef = doc(db, 'selectedPathways', userId);
+      await updateDoc(selectedPathwayRef, {
+        processed: true,
+        processedAt: new Date().toISOString()
+      });
+      console.log('✅ Selected pathway cleared');
+    } catch (error) {
+      console.error('Error clearing selected pathway:', error);
+    }
+  }
+
+  /**
+   * Generate detailed pathway analysis using Gemini AI
+   * @param {Object} detailedRequest - Comprehensive user data and requirements
+   * @returns {Object} - Detailed AI-powered pathway
+   */
+  async generateDetailedPathwayWithAI(detailedRequest) {
+    try {
+      console.log('🤖 Calling Gemini AI for detailed pathway analysis');
+      
+      // Import AI service
+      const aiRecommendationService = (await import('./aiRecommendationService.js')).default;
+      
+      // Prepare prompt for Gemini AI
+      const prompt = this.buildDetailedAnalysisPrompt(detailedRequest);
+      
+      // Get AI response
+      const aiResponse = await aiRecommendationService.getDetailedPathwayAnalysis(prompt);
+      
+      if (aiResponse && aiResponse.success) {
+        // Save the detailed pathway
+        await this.saveUserPathway(detailedRequest.userId, aiResponse.pathway);
+        
+        return {
+          success: true,
+          pathway: aiResponse.pathway
+        };
+      } else {
+        throw new Error('AI analysis failed');
+      }
+    } catch (error) {
+      console.error('Error generating detailed AI pathway:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Build comprehensive prompt for Gemini AI detailed analysis
+   * @param {Object} request - Detailed request with user profile and selected pathway
+   * @returns {string} - Formatted prompt for AI
+   */
+  buildDetailedAnalysisPrompt(request) {
+    const { userProfile, selectedPathway, requirements } = request;
+    
+    return `
+You are an expert study abroad consultant. Based on the following information, create a comprehensive, detailed study abroad pathway analysis.
+
+USER PROFILE:
+- Name: ${userProfile.fullName}
+- Nationality: ${userProfile.nationality}
+- Education Level: ${userProfile.educationLevel}
+- Target Countries: ${userProfile.preferredCountries?.join(', ')}
+- Field of Study: ${userProfile.preferredFields?.join(', ')}
+- Target Intake: ${userProfile.targetIntake} ${userProfile.targetYear}
+- Budget Range: $${userProfile.budgetMin} - $${userProfile.budgetMax}
+- Academic Performance: CGPA ${userProfile.cgpa}
+- English Proficiency: IELTS ${userProfile.ieltsScore}, TOEFL ${userProfile.toeflScore}
+- GRE Score: ${userProfile.greScore}
+- Work Experience: ${userProfile.workExperience}
+- Research Experience: ${userProfile.researchExperience}
+- Extracurriculars: ${userProfile.extracurriculars}
+
+SELECTED PATHWAY FROM UNIGUIDEPRO:
+${JSON.stringify(selectedPathway, null, 2)}
+
+REQUIRED ANALYSIS:
+Please provide a detailed analysis covering:
+1. University recommendations based on user's academic profile and scores
+2. Exact document checklist with specific deadlines
+3. Detailed cost breakdown by city/region
+4. Living expenses and accommodation options
+5. Visa requirements and application timeline
+6. Scholarship opportunities matching the user's profile
+7. Step-by-step application timeline (month by month)
+8. Country-specific requirements and procedures
+9. Backup options and alternatives
+
+RESPONSE FORMAT:
+Return a JSON object with the following structure:
+{
+  "id": "detailed_pathway_analysis",
+  "country": "target country",
+  "course": "field of study",
+  "academicLevel": "education level",
+  "timeline": {
+    "totalDuration": "X months",
+    "phases": [...]
+  },
+  "universities": [
+    {
+      "name": "University Name",
+      "ranking": "QS ranking",
+      "tuition": "exact fees",
+      "location": "city, country",
+      "requirements": {
+        "gpa": "minimum required",
+        "ielts": "minimum score",
+        "documents": ["list of required documents"]
+      },
+      "matchScore": "percentage match with user profile"
+    }
+  ],
+  "costs": {
+    "tuition": "detailed breakdown",
+    "living": "monthly living costs by city",
+    "accommodation": "housing options and costs",
+    "insurance": "health insurance costs",
+    "total": "total estimated costs"
+  },
+  "visa": {
+    "type": "visa category",
+    "requirements": ["detailed requirements"],
+    "timeline": "processing timeline",
+    "documents": ["specific documents needed"],
+    "tips": ["country-specific visa tips"]
+  },
+  "scholarships": [
+    {
+      "name": "scholarship name",
+      "amount": "funding amount",
+      "eligibility": "specific criteria",
+      "deadline": "application deadline",
+      "applicationProcess": "how to apply"
+    }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "title": "step title",
+      "description": "detailed description",
+      "duration": "time required",
+      "deadline": "specific deadline",
+      "documents": ["required documents"],
+      "tasks": ["specific tasks to complete"],
+      "status": "pending",
+      "priority": "high/medium/low"
+    }
+  ],
+  "monthlyTimeline": [
+    {
+      "month": "Month name",
+      "tasks": ["specific tasks for this month"],
+      "deadlines": ["important deadlines"],
+      "focus": "main focus area"
+    }
+  ],
+  "tips": ["detailed country and university specific tips"],
+  "alternatives": [
+    {
+      "option": "alternative pathway",
+      "description": "detailed description",
+      "pros": ["advantages"],
+      "cons": ["disadvantages"]
+    }
+  ]
+}
+
+Make the analysis as detailed and personalized as possible based on the user's specific profile and selected pathway.
+`;
+  }
 }
 
 export default new StudyAbroadService();

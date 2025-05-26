@@ -12,59 +12,72 @@ export const useSubscriptionLimits = () => {
     console.log('📊 Subscription data updated:', {
       subscriptionData,
       planType,
-      hasUsage: !!subscriptionData?.usage
-    });    // Set limits based on plan type
-    const planLimits = {
-      free: {
-        pathwaysPerMonth: 1, // Keep original pathway generation limit
-        uniGuideProUsage: -1, // UniGuidePro is now FREE for all users (unlimited)
-        myStudyPathUsage: 0, // MyStudyAbroadPath requires paid plan
-        universityComparisons: 3,
-        pdfExports: 0,
-        advancedFilters: false,
-        analytics: false
-      },
-      premium: {
-        pathwaysPerMonth: -1, // unlimited
-        uniGuideProUsage: -1, // unlimited UniGuidePro
-        myStudyPathUsage: -1, // unlimited MyStudyAbroadPath
-        universityComparisons: 10,
-        pdfExports: -1, // unlimited
-        advancedFilters: true,
-        analytics: false
-      },
-      pro: {
-        pathwaysPerMonth: -1, // unlimited
-        uniGuideProUsage: -1, // unlimited UniGuidePro
-        myStudyPathUsage: -1, // unlimited MyStudyAbroadPath
-        universityComparisons: -1, // unlimited
-        pdfExports: -1, // unlimited
-        advancedFilters: true,
-        analytics: true
-      }
-    };
+      hasUsage: !!subscriptionData?.usage,
+      hasLimits: !!subscriptionData?.limits
+    });
+
+    // Use limits from subscription service if available, otherwise use defaults
+    let currentLimits;
     
-    const currentLimits = planLimits[planType];
-    const currentUsage = subscriptionData?.usage || {
-      pathwaysGenerated: 0,
-      uniGuideProUsage: 0,
-      myStudyPathUsage: 0,
-      universityComparisons: 0,
-      pdfExports: 0
+    if (subscriptionData?.limits) {
+      // Use limits from subscription service (which come from subscriptionTiers)
+      currentLimits = subscriptionData.limits;
+      console.log('✅ Using limits from subscription service:', currentLimits);
+    } else {
+      // Fallback to hardcoded limits if subscription service doesn't provide them
+      console.log('⚠️ No limits in subscription data, using fallback limits');      const fallbackPlanLimits = {
+        free: {
+          pathwaysPerMonth: 1,
+          uniGuideProUsage: -1, // Free users get unlimited uses
+          myStudyPathUsage: 0, // No access for free users
+          universityComparisons: 3,
+          pdfExports: 0,
+          advancedFilters: false,
+          analytics: false
+        },
+        premium: {
+          pathwaysPerMonth: -1,
+          uniGuideProUsage: -1,
+          myStudyPathUsage: -1, // Unlimited access for premium
+          universityComparisons: 10,
+          pdfExports: -1,
+          advancedFilters: true,
+          analytics: false
+        },
+        pro: {
+          pathwaysPerMonth: -1,
+          uniGuideProUsage: -1,
+          myStudyPathUsage: -1,
+          universityComparisons: -1,
+          pdfExports: -1,
+          advancedFilters: true,
+          analytics: true
+        }
+      };
+      currentLimits = fallbackPlanLimits[planType];
+    }
+    
+    // Ensure all usage fields are properly initialized with defaults
+    const baseUsage = subscriptionData?.usage || {};
+    const currentUsage = {
+      pathwaysGenerated: baseUsage.pathwaysGenerated || 0,
+      uniGuideProUsage: baseUsage.uniGuideProUsage || 0,
+      myStudyPathUsage: baseUsage.myStudyPathUsage || 0,
+      universityComparisons: baseUsage.universityComparisons || 0,
+      pdfExports: baseUsage.pdfExports || 0
     };
     
     console.log('🎯 Setting limits and usage:', {
       planType,
       currentLimits,
-      currentUsage
+      currentUsage,
+      source: subscriptionData?.limits ? 'subscription-service' : 'fallback'
     });
     
     setLimits(currentLimits);
     setUsage(currentUsage);
     setLoading(false);
-  }, [subscriptionData]);
-
-  // Check if user can perform an action
+  }, [subscriptionData]);  // Check if user can perform an action
   const canPerformAction = (action) => {
     console.log('🔍 canPerformAction check:', {
       action,
@@ -72,6 +85,8 @@ export const useSubscriptionLimits = () => {
       usage,
       hasLimits: !!limits,
       hasUsage: !!usage,
+      loading,
+      subscriptionData,
       // Add detailed structure logging
       limitsDetail: limits ? {
         pathwaysPerMonth: limits.pathwaysPerMonth,
@@ -85,45 +100,126 @@ export const useSubscriptionLimits = () => {
       } : null
     });
 
-    if (!limits || !usage) {
-      console.log('❌ No limits or usage data available');
-      return false;
+    // DEBUG: Special logging for useMyStudyPath action
+    if (action === 'useMyStudyPath') {
+      console.log('🔍 DEBUG useMyStudyPath check:', {
+        action,
+        planType: subscriptionData?.planType,
+        loading,
+        hasLimits: !!limits,
+        hasUsage: !!usage,
+        limits,
+        usage,
+        myStudyPathLimit: limits?.myStudyPathUsage,
+        myStudyPathUsage: usage?.myStudyPathUsage,
+        loadingCondition: !limits || !usage,
+        isPaidPlan: subscriptionData?.planType !== 'free'
+      });
     }
 
-    switch (action) {
-      case 'generatePathway':
+    // Handle loading state - provide defaults for free users to prevent blocking
+    if (!limits || !usage) {
+      console.log('⏳ Subscription data still loading, using defaults for action:', action);
+      
+      // Get plan type or default to 'free'
+      const planType = subscriptionData?.planType || 'free';
+      
+      // If it's a paid plan, assume they can perform the action during loading
+      if (planType !== 'free') {
+        console.log('✅ Paid plan detected during loading, allowing action');
+        return true;
+      }
+      
+      // For free users, provide sensible defaults during loading state
+      const defaultFreeUsage = subscriptionData?.usage || {
+        pathwaysGenerated: 0,
+        uniGuideProUsage: 0,
+        myStudyPathUsage: 0,
+        universityComparisons: 0,
+        pdfExports: 0
+      };
+      
+      // Check specific actions for free users with default limits
+      switch (action) {
+        case 'generatePathway':
+        case 'pathway_generation':
+          const canGenerateDefault = defaultFreeUsage.pathwaysGenerated < 1;
+          console.log('🗺️ Loading state - pathway generation check:', {
+            used: defaultFreeUsage.pathwaysGenerated,
+            limit: 1,
+            canDo: canGenerateDefault
+          });
+          return canGenerateDefault;          case 'useUniGuidePro':
+          // All users get completely unlimited access to UniGuidePro
+          console.log('🎓 Loading state - UniGuidePro check:', {
+            canDo: true,
+            message: 'Always freely accessible to everyone'
+          });
+          return true;
+
+          case 'useMyStudyPath':
+          // MyStudyPath is a premium feature - requires paid plan
+          console.log('📚 Loading state - MyStudyPath check:', {
+            planType: subscriptionData?.planType || 'free',
+            message: 'MyStudyPath is a premium-only feature',
+            canDo: false
+          });
+          return false; // MyStudyPath always requires paid plan
+        
+        case 'compareUniversities':
+          const canCompareDefault = defaultFreeUsage.universityComparisons < 3;
+          console.log('🏫 Loading state - university comparison check:', {
+            used: defaultFreeUsage.universityComparisons,
+            limit: 3,
+            canDo: canCompareDefault
+          });
+          return canCompareDefault;
+        
+        case 'exportPdf':
+        case 'useAdvancedFilters':
+        case 'viewAnalytics':
+          console.log('📄 Loading state - feature requires paid plan');
+          return false; // These require paid plans
+        
+        default:
+          console.log('❓ Unknown action during loading state:', action);
+          return false;
+      }
+    }
+
+    switch (action) {      case 'generatePathway':
       case 'pathway_generation':
-        const canGeneratePathway = limits.pathwaysPerMonth === -1 || usage.pathwaysGenerated < limits.pathwaysPerMonth;
+        const canGeneratePathway = limits.pathwaysPerMonth === -1 || (usage.pathwaysGenerated || 0) < limits.pathwaysPerMonth;
         console.log('🗺️ generatePathway/pathway_generation check:', {
           limit: limits.pathwaysPerMonth,
-          used: usage.pathwaysGenerated,
+          used: usage.pathwaysGenerated || 0,
+          usedRaw: usage.pathwaysGenerated,
           canDo: canGeneratePathway
         });
-        return canGeneratePathway;
-      
-      case 'useUniGuidePro':
-        const canUseUniGuidePro = limits.uniGuideProUsage === -1 || usage.uniGuideProUsage < limits.uniGuideProUsage;
+        return canGeneratePathway;        case 'useUniGuidePro':
+        // All users get completely unlimited access to UniGuidePro
         console.log('🎓 useUniGuidePro check:', {
-          limit: limits.uniGuideProUsage,
-          used: usage.uniGuideProUsage,
-          canDo: canUseUniGuidePro
+          canDo: true,
+          message: 'Always freely accessible to everyone'
         });
-        return canUseUniGuidePro;
-      
-      case 'useMyStudyPath':
-        const canUseMyStudyPath = limits.myStudyPathUsage === -1 || usage.myStudyPathUsage < limits.myStudyPathUsage;
+        return true;
+
+        case 'useMyStudyPath':
+        // MyStudyPath requires paid plan (Premium or Pro)
+        const isPaidPlan = subscriptionData?.planType === 'premium' || subscriptionData?.planType === 'pro';
         console.log('📚 useMyStudyPath check:', {
-          limit: limits.myStudyPathUsage,
-          used: usage.myStudyPathUsage,
-          canDo: canUseMyStudyPath
+          planType: subscriptionData?.planType,
+          isPaidPlan,
+          canDo: isPaidPlan,
+          message: isPaidPlan ? 'Access granted (paid plan)' : 'Requires premium plan'
         });
-        return canUseMyStudyPath;
+        return isPaidPlan;
       
       case 'compareUniversities':
-        return limits.universityComparisons === -1 || usage.universityComparisons < limits.universityComparisons;
+        return limits.universityComparisons === -1 || (usage.universityComparisons || 0) < limits.universityComparisons;
       
       case 'exportPdf':
-        return limits.pdfExports === -1 || (limits.pdfExports > 0 && usage.pdfExports < limits.pdfExports);
+        return limits.pdfExports === -1 || (limits.pdfExports > 0 && (usage.pdfExports || 0) < limits.pdfExports);
       
       case 'useAdvancedFilters':
         return limits.advancedFilters;
@@ -136,20 +232,47 @@ export const useSubscriptionLimits = () => {
         return false;
     }
   };
-
   // Get remaining count for a specific action
   const getRemainingCount = (action) => {
-    if (!limits || !usage) return 0;
+    // Handle loading state - provide defaults for free users
+    if (!limits || !usage) {
+      const planType = subscriptionData?.planType || 'free';
+      const defaultUsage = subscriptionData?.usage || {
+        pathwaysGenerated: 0,
+        uniGuideProUsage: 0,
+        myStudyPathUsage: 0,
+        universityComparisons: 0,
+        pdfExports: 0
+      };
 
-    switch (action) {
+      // For paid plans during loading, assume they have access
+      if (planType !== 'free') {
+        return Infinity;
+      }
+
+      // For free users during loading, use default limits
+      switch (action) {
+        case 'generatePathway':
+          return Math.max(0, 1 - defaultUsage.pathwaysGenerated);
+        case 'useUniGuidePro':
+          return Math.max(0, 5 - defaultUsage.uniGuideProUsage);
+        case 'compareUniversities':
+          return Math.max(0, 3 - defaultUsage.universityComparisons);
+        default:
+          return 0;
+      }
+    }    switch (action) {
       case 'generatePathway':
-        return limits.pathwaysPerMonth === -1 ? Infinity : Math.max(0, limits.pathwaysPerMonth - usage.pathwaysGenerated);
+        return limits.pathwaysPerMonth === -1 ? Infinity : Math.max(0, limits.pathwaysPerMonth - (usage.pathwaysGenerated || 0));
+      
+      case 'useUniGuidePro':
+        return limits.uniGuideProUsage === -1 ? Infinity : Math.max(0, limits.uniGuideProUsage - (usage.uniGuideProUsage || 0));
       
       case 'compareUniversities':
-        return limits.universityComparisons === -1 ? Infinity : Math.max(0, limits.universityComparisons - usage.universityComparisons);
+        return limits.universityComparisons === -1 ? Infinity : Math.max(0, limits.universityComparisons - (usage.universityComparisons || 0));
       
       case 'exportPdf':
-        return limits.pdfExports === -1 ? Infinity : Math.max(0, limits.pdfExports - usage.pdfExports);
+        return limits.pdfExports === -1 ? Infinity : Math.max(0, limits.pdfExports - (usage.pdfExports || 0));
       
       default:
         return 0;
@@ -166,9 +289,9 @@ export const useSubscriptionLimits = () => {
         case 'generatePathway':
           success = await subscriptionService.trackPathwayGeneration(currentUser.uid);
           break;
-        
-        case 'useUniGuidePro':
-          success = await subscriptionService.trackUniGuideProUsage(currentUser.uid);
+          case 'useUniGuidePro':
+          // No need to track usage for UniGuidePro since it's freely accessible
+          success = true;
           break;
         
         case 'useMyStudyPath':
@@ -225,13 +348,14 @@ export const useSubscriptionLimits = () => {
                       'pdfExports'] || 0;
 
     return Math.min(100, (used / limit) * 100);
-  };
-  // Show upgrade prompt
+  };  // Show upgrade prompt
   const showUpgradePrompt = (action, onUpgrade) => {
+    // Never show upgrade prompt for UniGuidePro
+    if (action === 'useUniGuidePro') return;
+
     const actionNames = {
       generatePathway: 'generate more study abroad pathways',
       pathway_generation: 'generate more study abroad pathways',
-      useUniGuidePro: 'access UniGuide Pro features',
       useMyStudyPath: 'access MyStudyAbroadPath features',
       compareUniversities: 'compare more universities',
       exportPdf: 'export documents as PDF',

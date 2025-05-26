@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔬 UniGuidePro Timing Debug Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+        }
+        .result { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            border-left: 4px solid;
+        }
+        .success { background: #d4edda; color: #155724; border-color: #28a745; }
+        .error { background: #f8d7da; color: #721c24; border-color: #dc3545; }
+        .info { background: #d1ecf1; color: #0c5460; border-color: #17a2b8; }
+        .warning { background: #fff3cd; color: #856404; border-color: #ffc107; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 6px; 
+            overflow-x: auto; 
+            font-size: 11px;
+            margin: 10px 0;
+        }
+        .button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 8px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .button:hover { transform: translateY(-2px); }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        h2 { color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 8px; }
+        .timing-test {
+            background: #f1f3f4;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 UniGuidePro Timing & State Debug Test</h1>
+        <p>This test simulates the exact timing conditions that might cause the issue where free users see upgrade prompts instead of being allowed to use UniGuidePro.</p>
+        
+        <div id="results"></div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="button" onclick="runTimingTest()">🚀 Run Timing Test</button>
+            <button class="button" onclick="runStateTest()">🧪 Run State Test</button>
+            <button class="button" onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+    </div>
+
+    <script>
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        function addResult(content, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = content;
+            resultsDiv.appendChild(resultDiv);
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Simulate the exact canPerformAction logic from useSubscriptionLimits.js
+        function simulateCanPerformAction(action, limits, usage, subscriptionData, isLoading = false) {
+            console.log('🔍 simulateCanPerformAction called:', { action, limits, usage, subscriptionData, isLoading });
+
+            // Exact replica of the loading state handling
+            if (!limits || !usage) {
+                console.log('📊 In loading state - using defaults');
+                
+                const defaultFreeUsage = subscriptionData?.usage || {
+                    pathwaysGenerated: 0,
+                    uniGuideProUsage: 0,
+                    myStudyPathUsage: 0,
+                    universityComparisons: 0,
+                    pdfExports: 0
+                };
+                
+                if (action === 'useUniGuidePro') {
+                    const canUseUniGuideProDefault = (defaultFreeUsage.uniGuideProUsage || 0) < 5;
+                    console.log('🎓 Loading state - UniGuidePro check:', {
+                        used: defaultFreeUsage.uniGuideProUsage || 0,
+                        limit: 5,
+                        canDo: canUseUniGuideProDefault
+                    });
+                    return canUseUniGuideProDefault;
+                }
+                return false;
+            }
+
+            // Normal state logic
+            if (action === 'useUniGuidePro') {
+                const canUseUniGuidePro = limits.uniGuideProUsage === -1 || (usage.uniGuideProUsage || 0) < limits.uniGuideProUsage;
+                console.log('🎓 useUniGuidePro check:', {
+                    limit: limits.uniGuideProUsage,
+                    used: usage.uniGuideProUsage || 0,
+                    usedRaw: usage.uniGuideProUsage,
+                    canDo: canUseUniGuidePro
+                });
+                return canUseUniGuidePro;
+            }
+            
+            return false;
+        }
+
+        function runTimingTest() {
+            addResult('<h2>⏰ Timing Issue Test</h2>');
+            addResult('Testing different timing scenarios that might cause the issue...');
+
+            const scenarios = [
+                {
+                    name: "Component Load - Subscription Data Not Yet Available",
+                    description: "User clicks submit before subscription data is fully loaded",
+                    limits: null,
+                    usage: null,
+                    subscriptionData: null,
+                    expected: false,
+                    reason: "No subscription data available yet"
+                },
+                {
+                    name: "Partial Load - Subscription Data Partial",
+                    description: "Subscription data is partially loaded",
+                    limits: null,
+                    usage: null,
+                    subscriptionData: { planType: 'free' },
+                    expected: true,
+                    reason: "Should use default usage (0) for free plan"
+                },
+                {
+                    name: "Database Issue - Usage Field Missing",
+                    description: "Subscription data exists but usage field is missing",
+                    limits: { uniGuideProUsage: 5 },
+                    usage: null,
+                    subscriptionData: { planType: 'free' },
+                    expected: true,
+                    reason: "Should use default usage (0) for free plan"
+                },
+                {
+                    name: "Normal Load - Complete Data",
+                    description: "All data loaded correctly",
+                    limits: { uniGuideProUsage: 5 },
+                    usage: { uniGuideProUsage: 0 },
+                    subscriptionData: { planType: 'free', usage: { uniGuideProUsage: 0 } },
+                    expected: true,
+                    reason: "Normal case: 0 < 5"
+                },
+                {
+                    name: "At Limit - Should Block",
+                    description: "User has reached their limit",
+                    limits: { uniGuideProUsage: 5 },
+                    usage: { uniGuideProUsage: 5 },
+                    subscriptionData: { planType: 'free', usage: { uniGuideProUsage: 5 } },
+                    expected: false,
+                    reason: "At limit: 5 >= 5"
+                }
+            ];
+
+            scenarios.forEach((scenario, index) => {
+                const result = simulateCanPerformAction('useUniGuidePro', scenario.limits, scenario.usage, scenario.subscriptionData);
+                const passed = result === scenario.expected;
+                
+                addResult(`
+                    <div class="timing-test">
+                        <h3>📋 Scenario ${index + 1}: ${scenario.name}</h3>
+                        <p><strong>Description:</strong> ${scenario.description}</p>
+                        <p><strong>Expected:</strong> ${scenario.expected ? '✅ ALLOW' : '❌ BLOCK'} (${scenario.reason})</p>
+                        <p><strong>Actual:</strong> ${result ? '✅ ALLOW' : '❌ BLOCK'}</p>
+                        <p><strong>Result:</strong> ${passed ? '🎉 PASSED' : '🚨 FAILED'}</p>
+                        <details>
+                            <summary>Debug Data</summary>
+                            <pre>${JSON.stringify({ 
+                                limits: scenario.limits, 
+                                usage: scenario.usage, 
+                                subscriptionData: scenario.subscriptionData 
+                            }, null, 2)}</pre>
+                        </details>
+                    </div>
+                `, passed ? 'success' : 'error');
+            });
+        }
+
+        function runStateTest() {
+            addResult('<h2>🧪 State Management Test</h2>');
+            addResult('Testing how the state changes over time and what happens during transitions...');
+
+            // Simulate the state progression during app load
+            const stateProgression = [
+                {
+                    stage: "Initial Load",
+                    limits: null,
+                    usage: null,
+                    subscriptionData: null,
+                    time: 0
+                },
+                {
+                    stage: "Auth Context Loaded",
+                    limits: null,
+                    usage: null,
+                    subscriptionData: { planType: 'free' },
+                    time: 100
+                },
+                {
+                    stage: "Subscription Limits Set",
+                    limits: { uniGuideProUsage: 5 },
+                    usage: null,
+                    subscriptionData: { planType: 'free' },
+                    time: 200
+                },
+                {
+                    stage: "Usage Data Loaded",
+                    limits: { uniGuideProUsage: 5 },
+                    usage: { uniGuideProUsage: 0 },
+                    subscriptionData: { planType: 'free', usage: { uniGuideProUsage: 0 } },
+                    time: 300
+                }
+            ];
+
+            addResult('<h3>📊 State Progression Analysis</h3>');
+            
+            stateProgression.forEach((state, index) => {
+                const canUse = simulateCanPerformAction('useUniGuidePro', state.limits, state.usage, state.subscriptionData);
+                const userExperience = canUse ? "✅ Form submit would work" : "❌ User would see upgrade prompt";
+                
+                addResult(`
+                    <div style="margin: 10px 0; padding: 15px; background: ${index === stateProgression.length - 1 ? '#d4edda' : '#fff3cd'}; border-radius: 6px;">
+                        <h4>Stage ${index + 1}: ${state.stage} (t=${state.time}ms)</h4>
+                        <p><strong>User Experience:</strong> ${userExperience}</p>
+                        <p><strong>Can Use UniGuidePro:</strong> ${canUse}</p>
+                        <details>
+                            <summary>State Details</summary>
+                            <pre>${JSON.stringify(state, null, 2)}</pre>
+                        </details>
+                    </div>
+                `);
+            });
+
+            // Critical timing window analysis
+            addResult('<h3>⚠️ Critical Timing Window Analysis</h3>');
+            addResult(`
+                <div class="warning">
+                    <strong>Potential Issue Identified:</strong><br>
+                    If a user clicks "Generate Pathway" during stages 1-3 (before usage data is fully loaded), 
+                    they would see an upgrade prompt even though they should be allowed to use UniGuidePro.<br><br>
+                    <strong>Solutions:</strong><br>
+                    1. Show loading state in the form until data is ready<br>
+                    2. Disable submit button until subscription data is fully loaded<br>
+                    3. Queue the action until data is ready<br>
+                    4. Use optimistic defaults more aggressively
+                </div>
+            `);
+        }
+
+        // Auto-run tests
+        window.onload = () => {
+            setTimeout(() => {
+                runTimingTest();
+                setTimeout(() => {
+                    runStateTest();
+                }, 1000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>

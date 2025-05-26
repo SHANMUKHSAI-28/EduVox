@@ -17,7 +17,8 @@ const MyStudyAbroadPath = () => {
     showUpgradePrompt, 
     planType,
     limits,
-    usage 
+    usage,
+    loading: subscriptionLoading 
   } = useSubscriptionLimits();
   const [loading, setLoading] = useState(true);
   const [generatingPath, setGeneratingPath] = useState(false);
@@ -26,28 +27,33 @@ const MyStudyAbroadPath = () => {
   const [alert, setAlert] = useState(null);
   const [activeStep, setActiveStep] = useState(null);
   const [lastProfileUpdate, setLastProfileUpdate] = useState(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  useEffect(() => {
-    if (currentUser && limits && usage) {
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);  useEffect(() => {
+    if (currentUser && !subscriptionLoading) {
       loadUserProfile();
     }
-  }, [currentUser, limits, usage]);const loadUserProfile = async () => {
+  }, [currentUser, subscriptionLoading]);const loadUserProfile = async () => {
     try {
       const profile = await academicProfileService.getAcademicProfile(currentUser.uid);
       setUserProfile(profile);
-      
-      if (profile && isProfileComplete(profile)) {
+        if (profile && isProfileComplete(profile)) {
         // Check subscription before loading existing pathway
         if (canPerformAction('useMyStudyPath')) {
-          // Try to load existing pathway first
-          await loadExistingPathway(profile);
+          // Check if user has selected a pathway from UniGuidePro
+          const selectedPathway = await studyAbroadService.getSelectedPathway(currentUser.uid);
+          if (selectedPathway) {
+            // Generate detailed AI-powered analysis
+            await generateDetailedAnalysis(selectedPathway, profile);
+          } else {
+            // Try to load existing detailed pathway
+            await loadExistingPathway(profile);
+          }
         } else {
           // User doesn't have access, show upgrade prompt
           console.log('❌ MyStudyPath: User cannot access existing pathway, subscription required');
           setLoading(false);
           setAlert({
             type: 'warning',
-            message: 'Upgrade to access your personalized study abroad pathway.'
+            message: 'Upgrade to Premium to access AI-powered detailed study abroad analysis.'
           });
         }
       }
@@ -364,7 +370,115 @@ const MyStudyAbroadPath = () => {
     return () => clearInterval(interval);
   }, [currentUser, lastProfileUpdate, userProfile, pathway]);
 
-  if (loading) {
+  const generateDetailedAnalysis = async (selectedPathway, profile) => {
+    try {
+      console.log('🔍 Generating detailed AI analysis for selected pathway');
+      setGeneratingPath(true);
+      setAlert({
+        type: 'info',
+        message: 'Generating detailed AI-powered analysis from your selected pathway...',
+        icon: <FaSync className="animate-spin" />
+      });
+
+      // Import PathwayScrapingService
+      const pathwayScrapingService = (await import('../../services/pathwayScrapingService.js')).default;
+      
+      // Create detailed profile for AI analysis
+      const detailedProfile = {
+        country: selectedPathway.country || profile.preferred_countries?.[0] || 'USA',
+        course: selectedPathway.course || profile.preferred_fields_of_study?.[0] || 'Computer Science',
+        academicLevel: selectedPathway.academicLevel || profile.education_level || 'Master',
+        nationality: profile.nationality || 'Indian',
+        budgetRange: {
+          name: 'Medium',
+          min: profile.budget_min || 25000,
+          max: profile.budget_max || 75000
+        }
+      };
+
+      console.log('📋 Detailed profile for AI analysis:', detailedProfile);
+
+      // Generate comprehensive pathway using PathwayScrapingService AI function
+      const detailedPathwayData = await pathwayScrapingService.generatePathwayWithAI(detailedProfile);
+      
+      if (detailedPathwayData) {
+        // Transform the AI response to match our pathway structure
+        const detailedPathway = {
+          id: `detailed_${Date.now()}`,
+          userId: currentUser.uid,
+          country: detailedProfile.country,
+          course: detailedProfile.course,
+          academicLevel: detailedProfile.academicLevel,
+          type: 'detailed_ai_analysis',
+          source: 'pathway_scraping_ai',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          
+          // Universities from AI response
+          universities: detailedPathwayData.universities || [],
+          
+          // Convert timeline to our step format
+          steps: detailedPathwayData.timeline ? detailedPathwayData.timeline.map((timelineItem, index) => ({
+            step: index + 1,
+            title: timelineItem.month || `Step ${index + 1}`,
+            description: timelineItem.tasks?.join(', ') || 'Complete tasks for this phase',
+            duration: '1 month',
+            status: 'pending',
+            tasks: timelineItem.tasks || [],
+            priority: timelineItem.priority || 'medium',
+            documents: timelineItem.documents || 'Review required documents'
+          })) : [],
+          
+          // Additional AI data
+          documents: detailedPathwayData.documents || [],
+          visaRequirements: detailedPathwayData.visaRequirements || {},
+          scholarships: detailedPathwayData.scholarships || [],
+          costs: detailedPathwayData.costs || {},
+          languageRequirements: detailedPathwayData.languageRequirements || {},
+          admissionRequirements: detailedPathwayData.admissionRequirements || {},
+          careerProspects: detailedPathwayData.careerProspects || {},
+          livingInfo: detailedPathwayData.livingInfo || {},
+          additionalSupport: detailedPathwayData.additionalSupport || {},
+          specialConsiderations: detailedPathwayData.specialConsiderations || {},
+          
+          // Mark as detailed analysis
+          isDetailedAnalysis: true,
+          sourcePathway: selectedPathway
+        };
+
+        console.log('✅ Detailed pathway analysis generated:', detailedPathway);
+
+        // Save the detailed pathway
+        await studyAbroadService.saveUserPathway(currentUser.uid, detailedPathway);
+        
+        // Clear the selected pathway flag
+        await studyAbroadService.clearSelectedPathway(currentUser.uid);
+        
+        // Set the pathway in state
+        setPathway(detailedPathway);
+        
+        setAlert({
+          type: 'success',
+          message: '✨ Detailed AI analysis complete! Your comprehensive study abroad pathway is ready.',
+          icon: <FaCheckCircle />
+        });
+      } else {
+        throw new Error('Failed to generate detailed analysis');
+      }
+    } catch (error) {
+      console.error('Error generating detailed analysis:', error);
+      setAlert({
+        type: 'error',
+        message: 'Failed to generate detailed analysis. Please try again.'
+      });
+      
+      // Fallback to loading existing pathway
+      await loadExistingPathway(profile);
+    } finally {
+      setGeneratingPath(false);
+    }
+  };
+  if (loading || subscriptionLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <LoadingSpinner />
@@ -462,10 +576,15 @@ const MyStudyAbroadPath = () => {
           </div>
         </div>
       </div>    );
-  }
-
-  // Check subscription access for MyStudyPath
-  if (limits && usage && !canPerformAction('useMyStudyPath')) {
+  }  // Check subscription access for MyStudyPath
+  if (!subscriptionLoading && !canPerformAction('useMyStudyPath')) {
+    console.log('❌ MyStudyAbroadPath: Showing upgrade modal because canPerformAction returned false', {
+      subscriptionLoading,
+      planType,
+      limits,
+      usage,
+      canPerformResult: canPerformAction('useMyStudyPath')
+    });
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="bg-white rounded-lg shadow-md p-8 text-center">

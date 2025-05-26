@@ -35,10 +35,11 @@ class SubscriptionService {
           scholarshipAlerts: false,
           applicationTracking: false,
           analyticsReports: false
-        },
-        limits: {
+        },        limits: {
           pathwaysPerMonth: 1,
-          universitiesComparison: 3,
+          uniGuideProUsage: 5, // 5 free UniGuidePro uses per month
+          myStudyPathUsage: 0, // MyStudyPath requires paid plan
+          universityComparisons: 3, // 3 university comparisons (renamed from universitiesComparison)
           pdfExports: 0,
           savedUniversities: 10
         }
@@ -59,10 +60,11 @@ class SubscriptionService {
           scholarshipAlerts: true,
           applicationTracking: true,
           analyticsReports: false
-        },
-        limits: {
+        },        limits: {
           pathwaysPerMonth: -1, // Unlimited
-          universitiesComparison: 10,
+          uniGuideProUsage: -1, // Unlimited UniGuidePro usage
+          myStudyPathUsage: -1, // Unlimited MyStudyPath usage
+          universityComparisons: 10, // 10 university comparisons (renamed from universitiesComparison)
           pdfExports: -1, // Unlimited
           savedUniversities: 50
         }
@@ -83,10 +85,11 @@ class SubscriptionService {
           scholarshipAlerts: true,
           applicationTracking: true,
           analyticsReports: true
-        },
-        limits: {
+        },        limits: {
           pathwaysPerMonth: -1, // Unlimited
-          universitiesComparison: -1, // Unlimited
+          uniGuideProUsage: -1, // Unlimited UniGuidePro usage
+          myStudyPathUsage: -1, // Unlimited MyStudyPath usage
+          universityComparisons: -1, // Unlimited (renamed from universitiesComparison)
           pdfExports: -1, // Unlimited
           savedUniversities: -1 // Unlimited
         }

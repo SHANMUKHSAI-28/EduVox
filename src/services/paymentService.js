@@ -208,28 +208,30 @@ class PaymentService {
 
   // Get subscription plans for display
   getSubscriptionPlans() {
-    return [
-      {
+    return [      {
         type: 'free',
         name: 'Free',
         price: 0,
         features: [
+          'Full access to UniGuidePro features',
           '1 study abroad pathway per month',
           '3 university comparisons',
           'Basic university search',
           'Community support'
         ],
         limitations: [
+          'No access to MyStudyPath',
           'No PDF exports',
           'Limited filter options',
           'Basic support only'
         ]
-      },
-      {
+      },      {
         type: 'premium',
         name: 'Premium',
         price: 999,
         features: [
+          'Full access to UniGuidePro features',
+          'MyStudyPath access',
           'Unlimited study abroad pathways',
           '10 university comparisons per month',
           'Unlimited PDF exports',
@@ -237,12 +239,13 @@ class PaymentService {
           'Email support'
         ],
         recommended: true
-      },
-      {
+      },      {
         type: 'pro',
         name: 'Pro',
         price: 1999,
         features: [
+          'Full access to UniGuidePro features',
+          'MyStudyPath access',
           'Everything in Premium',
           'Unlimited university comparisons',
           'Advanced analytics dashboard',
