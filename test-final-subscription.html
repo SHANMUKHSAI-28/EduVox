@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Subscription Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .pass { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .fail { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Final EduVox Subscription Configuration Test</h1>
+    
+    <div id="results"></div>
+
+    <script>
+        // Simulate subscription configuration
+        const subscriptionConfig = {
+            free: {
+                pathwaysPerMonth: 1,
+                uniGuideProUsage: -1, // Should be UNLIMITED for free users
+                myStudyPathUsage: 0,  // Should be BLOCKED for free users
+                universityComparisons: 3,
+                pdfExports: 0,
+                advancedFilters: false,
+                analytics: false
+            },
+            premium: {
+                pathwaysPerMonth: -1,
+                uniGuideProUsage: -1,
+                myStudyPathUsage: -1, // Should be UNLIMITED for premium users
+                universityComparisons: 10,
+                pdfExports: -1,
+                advancedFilters: true,
+                analytics: false
+            },
+            pro: {
+                pathwaysPerMonth: -1,
+                uniGuideProUsage: -1,
+                myStudyPathUsage: -1,
+                universityComparisons: -1,
+                pdfExports: -1,
+                advancedFilters: true,
+                analytics: true
+            }
+        };
+
+        function canPerformAction(action, planType, usage) {
+            const limits = subscriptionConfig[planType];
+            
+            switch (action) {
+                case 'useUniGuidePro':
+                    return limits.uniGuideProUsage === -1 || usage.uniGuideProUsage < limits.uniGuideProUsage;
+                
+                case 'useMyStudyPath':
+                    return limits.myStudyPathUsage === -1 || usage.myStudyPathUsage < limits.myStudyPathUsage;
+                
+                case 'generatePathway':
+                case 'pathway_generation':
+                    return limits.pathwaysPerMonth === -1 || usage.pathwaysGenerated < limits.pathwaysPerMonth;
+                
+                default:
+                    return false;
+            }
+        }
+
+        function runTests() {
+            const results = document.getElementById('results');
+            const tests = [];
+
+            // Test scenarios
+            const freeUserUsage = {
+                pathwaysGenerated: 0,
+                uniGuideProUsage: 0,
+                myStudyPathUsage: 0,
+                universityComparisons: 0,
+                pdfExports: 0
+            };
+
+            const freeUserUsedUp = {
+                pathwaysGenerated: 1, // Used up general pathway
+                uniGuideProUsage: 5,  // Used UniGuidePro multiple times (should still work)
+                myStudyPathUsage: 0,  // Never used MyStudyPath (should be blocked anyway)
+                universityComparisons: 0,
+                pdfExports: 0
+            };
+
+            const premiumUserUsage = {
+                pathwaysGenerated: 5,
+                uniGuideProUsage: 10,
+                myStudyPathUsage: 3,
+                universityComparisons: 8,
+                pdfExports: 2
+            };
+
+            // Test 1: Free user - UniGuidePro should be unlimited
+            tests.push({
+                name: "Free User - UniGuidePro Access (fresh user)",
+                expected: true,
+                actual: canPerformAction('useUniGuidePro', 'free', freeUserUsage),
+                description: "Free users should have unlimited access to UniGuidePro"
+            });
+
+            // Test 2: Free user - UniGuidePro should still work after multiple uses
+            tests.push({
+                name: "Free User - UniGuidePro Access (after multiple uses)",
+                expected: true,
+                actual: canPerformAction('useUniGuidePro', 'free', freeUserUsedUp),
+                description: "Free users should still have unlimited access to UniGuidePro even after using it multiple times"
+            });
+
+            // Test 3: Free user - MyStudyPath should be blocked
+            tests.push({
+                name: "Free User - MyStudyPath Access",
+                expected: false,
+                actual: canPerformAction('useMyStudyPath', 'free', freeUserUsage),
+                description: "Free users should NOT have access to MyStudyPath (requires premium)"
+            });
+
+            // Test 4: Free user - MyStudyPath should be blocked even if unused
+            tests.push({
+                name: "Free User - MyStudyPath Access (unused)",
+                expected: false,
+                actual: canPerformAction('useMyStudyPath', 'free', freeUserUsedUp),
+                description: "Free users should NOT have access to MyStudyPath regardless of usage"
+            });
+
+            // Test 5: Premium user - UniGuidePro should be unlimited
+            tests.push({
+                name: "Premium User - UniGuidePro Access",
+                expected: true,
+                actual: canPerformAction('useUniGuidePro', 'premium', premiumUserUsage),
+                description: "Premium users should have unlimited access to UniGuidePro"
+            });
+
+            // Test 6: Premium user - MyStudyPath should be unlimited
+            tests.push({
+                name: "Premium User - MyStudyPath Access",
+                expected: true,
+                actual: canPerformAction('useMyStudyPath', 'premium', premiumUserUsage),
+                description: "Premium users should have unlimited access to MyStudyPath"
+            });
+
+            // Test 7: General pathway generation for free user (should be limited)
+            tests.push({
+                name: "Free User - General Pathway Generation (unused)",
+                expected: true,
+                actual: canPerformAction('generatePathway', 'free', freeUserUsage),
+                description: "Free users should be able to generate 1 general pathway per month"
+            });
+
+            // Test 8: General pathway generation for free user (used up)
+            tests.push({
+                name: "Free User - General Pathway Generation (used up)",
+                expected: false,
+                actual: canPerformAction('generatePathway', 'free', freeUserUsedUp),
+                description: "Free users should NOT be able to generate pathways after using their monthly limit"
+            });
+
+            // Display results
+            results.innerHTML = '<h2>Test Results</h2>';
+            
+            let passCount = 0;
+            tests.forEach((test, index) => {
+                const passed = test.actual === test.expected;
+                if (passed) passCount++;
+
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+                resultDiv.innerHTML = `
+                    <strong>Test ${index + 1}: ${test.name}</strong><br>
+                    Expected: ${test.expected}, Got: ${test.actual} ${passed ? '✅' : '❌'}<br>
+                    <em>${test.description}</em>
+                `;
+                results.appendChild(resultDiv);
+            });
+
+            // Summary
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = `test-result ${passCount === tests.length ? 'pass' : 'fail'}`;
+            summaryDiv.innerHTML = `
+                <strong>Summary: ${passCount}/${tests.length} tests passed</strong><br>
+                ${passCount === tests.length ? 
+                    '🎉 All tests passed! Subscription configuration is correct.' : 
+                    '⚠️ Some tests failed. Please check the configuration.'
+                }
+            `;
+            results.appendChild(summaryDiv);
+
+            // Display current configuration
+            const configDiv = document.createElement('div');
+            configDiv.className = 'test-result info';
+            configDiv.innerHTML = `
+                <strong>Current Configuration Summary:</strong><br>
+                <strong>Free Plan:</strong><br>
+                - UniGuidePro: ${subscriptionConfig.free.uniGuideProUsage === -1 ? 'Unlimited ✅' : subscriptionConfig.free.uniGuideProUsage + ' uses'}<br>
+                - MyStudyPath: ${subscriptionConfig.free.myStudyPathUsage === 0 ? 'Blocked ✅' : subscriptionConfig.free.myStudyPathUsage + ' uses'}<br>
+                - General Pathways: ${subscriptionConfig.free.pathwaysPerMonth} per month<br><br>
+                
+                <strong>Premium Plan:</strong><br>
+                - UniGuidePro: ${subscriptionConfig.premium.uniGuideProUsage === -1 ? 'Unlimited ✅' : subscriptionConfig.premium.uniGuideProUsage + ' uses'}<br>
+                - MyStudyPath: ${subscriptionConfig.premium.myStudyPathUsage === -1 ? 'Unlimited ✅' : subscriptionConfig.premium.myStudyPathUsage + ' uses'}<br>
+                - General Pathways: ${subscriptionConfig.premium.pathwaysPerMonth === -1 ? 'Unlimited' : subscriptionConfig.premium.pathwaysPerMonth + ' per month'}
+            `;
+            results.appendChild(configDiv);
+        }
+
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html>

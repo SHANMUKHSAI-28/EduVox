@@ -129,8 +129,7 @@ class SubscriptionService {
 
   /**
    * Get user's current subscription
-   */
-  async getUserSubscription(userId) {
+   */  async getUserSubscription(userId) {
     try {
       const subscriptionRef = doc(db, this.subscriptionsCollection, userId);
       const subscriptionDoc = await getDoc(subscriptionRef);
@@ -146,22 +145,54 @@ class SubscriptionService {
           if (now > expiresAt) {
             // Subscription expired, downgrade to free
             await this.downgradeToFree(userId);
-            return this.subscriptionTiers.free;
+            // Return free tier with proper structure
+            return {
+              ...this.subscriptionTiers.free,
+              planType: 'free',
+              planId: 'free',
+              status: 'active',
+              usage: {
+                pathwaysGenerated: 0,
+                uniGuideProUsage: 0,
+                myStudyPathUsage: 0,
+                universityComparisons: 0,
+                pdfExports: 0
+              }
+            };
           }
         }
         
+        // Return active subscription with proper structure
         return {
           ...this.subscriptionTiers[subscriptionData.planId],
-          ...subscriptionData
+          ...subscriptionData,
+          planType: subscriptionData.planType || subscriptionData.planId
         };
       } else {
         // No subscription found, create free tier subscription
-        await this.createFreeSubscription(userId);
-        return this.subscriptionTiers.free;
+        const newSubscription = await this.createFreeSubscription(userId);
+        return {
+          ...this.subscriptionTiers.free,
+          ...newSubscription,
+          planType: 'free'
+        };
       }
     } catch (error) {
       console.error('Error getting user subscription:', error);
-      return this.subscriptionTiers.free; // Default to free on error
+      // Return free tier with proper structure even on error
+      return {
+        ...this.subscriptionTiers.free,
+        planType: 'free',
+        planId: 'free',
+        status: 'active',
+        usage: {
+          pathwaysGenerated: 0,
+          uniGuideProUsage: 0,
+          myStudyPathUsage: 0,
+          universityComparisons: 0,
+          pdfExports: 0
+        }
+      };
     }
   }
 
@@ -169,19 +200,21 @@ class SubscriptionService {
    * Create free tier subscription for new users
    */
   async createFreeSubscription(userId) {
-    try {
-      const subscriptionData = {
+    try {      const subscriptionData = {
         userId,
         planId: 'free',
+        planType: 'free',
         status: 'active',
         startDate: serverTimestamp(),
         expiresAt: null, // Free tier never expires
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        usageStats: {
+        usage: {
           pathwaysGenerated: 0,
-          pdfExports: 0,
-          lastReset: serverTimestamp()
+          uniGuideProUsage: 0,
+          myStudyPathUsage: 0,
+          universityComparisons: 0,
+          pdfExports: 0
         }
       };
 
@@ -194,7 +227,6 @@ class SubscriptionService {
       throw new Error('Failed to create free subscription');
     }
   }
-
   /**
    * Upgrade user subscription
    */
@@ -211,6 +243,7 @@ class SubscriptionService {
       const subscriptionData = {
         userId,
         planId,
+        planType: planId,
         status: 'active',
         startDate: serverTimestamp(),
         expiresAt: expiresAt,
@@ -223,10 +256,12 @@ class SubscriptionService {
           razorpayOrderId: paymentData.razorpayOrderId,
           razorpayPaymentId: paymentData.razorpayPaymentId
         },
-        usageStats: {
+        usage: {
           pathwaysGenerated: 0,
-          pdfExports: 0,
-          lastReset: serverTimestamp()
+          uniGuideProUsage: 0,
+          myStudyPathUsage: 0,
+          universityComparisons: 0,
+          pdfExports: 0
         }
       };
 
@@ -252,16 +287,18 @@ class SubscriptionService {
    */
   async downgradeToFree(userId) {
     try {
-      const subscriptionRef = doc(db, this.subscriptionsCollection, userId);
-      await updateDoc(subscriptionRef, {
+      const subscriptionRef = doc(db, this.subscriptionsCollection, userId);      await updateDoc(subscriptionRef, {
         planId: 'free',
+        planType: 'free',
         status: 'active',
         expiresAt: null,
         updatedAt: serverTimestamp(),
-        usageStats: {
+        usage: {
           pathwaysGenerated: 0,
-          pdfExports: 0,
-          lastReset: serverTimestamp()
+          uniGuideProUsage: 0,
+          myStudyPathUsage: 0,
+          universityComparisons: 0,
+          pdfExports: 0
         }
       });
 

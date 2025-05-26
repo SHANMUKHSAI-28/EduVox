@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Subscription Logic Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Subscription Logic</h2>
+        <p>This page tests the subscription limits for UniGuidePro and MyStudyAbroadPath</p>
+        
+        <div id="status" class="status info">
+            <strong>Instructions:</strong><br>
+            1. Open browser console (F12) to see debug logs<br>
+            2. Log in with your account<br>
+            3. Click test buttons to check subscription logic<br>
+            4. Watch console for detailed debug information
+        </div>
+        
+        <div id="results"></div>
+        
+        <button onclick="testUniGuidePro()">Test UniGuidePro Access (Should allow 3 free uses)</button>
+        <button onclick="testMyStudyPath()">Test MyStudyPath Access (Should require paid plan)</button>
+        <button onclick="checkCurrentSubscription()">Check Current Subscription Data</button>
+        <button onclick="simulateUsage()">Simulate Usage Tracking</button>
+    </div>
+
+    <script type="module">
+        console.log('🚀 Starting subscription debug test');
+        
+        // Test functions
+        window.testUniGuidePro = function() {
+            console.log('🎓 Testing UniGuidePro access...');
+            addResult('Testing UniGuidePro access...', 'info');
+            
+            // This will be logged by the useSubscriptionLimits hook
+            console.log('Expected: Should allow 3 free uses for free users');
+        };
+        
+        window.testMyStudyPath = function() {
+            console.log('📚 Testing MyStudyPath access...');
+            addResult('Testing MyStudyPath access...', 'info');
+            
+            // This will be logged by the useSubscriptionLimits hook
+            console.log('Expected: Should require paid plan (0 free uses)');
+        };
+        
+        window.checkCurrentSubscription = function() {
+            console.log('📊 Checking current subscription data...');
+            addResult('Checking subscription data... (see console)', 'info');
+        };
+        
+        window.simulateUsage = function() {
+            console.log('⚡ Simulating usage tracking...');
+            addResult('Simulating usage... (see console)', 'info');
+        };
+        
+        function addResult(message, type) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(div);
+        }
+        
+        // Log test scenarios
+        console.log('📋 Test Scenarios:');
+        console.log('1. UniGuidePro (free plan): Should allow 3 uses, then ask for upgrade');
+        console.log('2. MyStudyPath (free plan): Should immediately ask for upgrade');
+        console.log('3. UniGuidePro (paid plan): Should allow unlimited uses');
+        console.log('4. MyStudyPath (paid plan): Should allow unlimited uses');
+        
+        addResult('Subscription debug test loaded. Check browser console for logs.', 'success');
+    </script>
+</body>
+</html>

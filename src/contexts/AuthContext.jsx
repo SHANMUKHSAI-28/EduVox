@@ -66,11 +66,12 @@ export const AuthProvider = ({ children }) => {
     // Fetch subscription data
     await loadSubscriptionData(user.uid);
   };
-
   // Load subscription data
   const loadSubscriptionData = async (userId) => {
     try {
+      console.log('🔄 Loading subscription data for user:', userId);
       const subscription = await subscriptionService.getUserSubscription(userId);
+      console.log('📄 Loaded subscription data:', subscription);
       setSubscriptionData(subscription);
     } catch (error) {
       console.error('Error loading subscription data:', error);

@@ -7,16 +7,17 @@ import SubscriptionPlans from '../subscription/SubscriptionPlans';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { FaUser, FaGraduationCap, FaDollarSign, FaGlobe, FaCalendarAlt, FaCheckCircle, FaClock, FaExclamationTriangle, FaSync, FaBell } from 'react-icons/fa';
+import { FaUser, FaGraduationCap, FaDollarSign, FaGlobe, FaCalendarAlt, FaCheckCircle, FaClock, FaExclamationTriangle, FaSync, FaBell, FaCrown } from 'react-icons/fa';
 
 const MyStudyAbroadPath = () => {
-  const { currentUser } = useAuth();
-  const { 
+  const { currentUser } = useAuth();  const { 
     canPerformAction, 
     getRemainingCount, 
     trackUsage, 
     showUpgradePrompt, 
-    planType 
+    planType,
+    limits,
+    usage 
   } = useSubscriptionLimits();
   const [loading, setLoading] = useState(true);
   const [generatingPath, setGeneratingPath] = useState(false);
@@ -26,20 +27,29 @@ const MyStudyAbroadPath = () => {
   const [activeStep, setActiveStep] = useState(null);
   const [lastProfileUpdate, setLastProfileUpdate] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && limits && usage) {
       loadUserProfile();
     }
-  }, [currentUser]);
-  const loadUserProfile = async () => {
+  }, [currentUser, limits, usage]);const loadUserProfile = async () => {
     try {
       const profile = await academicProfileService.getAcademicProfile(currentUser.uid);
       setUserProfile(profile);
       
       if (profile && isProfileComplete(profile)) {
-        // Try to load existing pathway first
-        await loadExistingPathway(profile);
+        // Check subscription before loading existing pathway
+        if (canPerformAction('useMyStudyPath')) {
+          // Try to load existing pathway first
+          await loadExistingPathway(profile);
+        } else {
+          // User doesn't have access, show upgrade prompt
+          console.log('❌ MyStudyPath: User cannot access existing pathway, subscription required');
+          setLoading(false);
+          setAlert({
+            type: 'warning',
+            message: 'Upgrade to access your personalized study abroad pathway.'
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
@@ -111,15 +121,25 @@ const MyStudyAbroadPath = () => {
   };  const generatePersonalizedPath = async (profile = userProfile) => {
     if (!profile) return;
 
+    // Debug logging
+    console.log('📚 MyStudyAbroadPath generatePersonalizedPath - Debug Info:', {
+      limits,
+      usage,
+      planType,
+      canUseMyStudyPath: canPerformAction('useMyStudyPath')
+    });
+
     // Check subscription limits for MyStudyPath usage
     if (!canPerformAction('useMyStudyPath')) {
+      console.log('❌ MyStudyPath: Cannot perform action, showing upgrade prompt');
       showUpgradePrompt('useMyStudyPath', () => setShowUpgradeModal(true));
       return;
     }
 
+    console.log('✅ MyStudyPath: Can perform action, proceeding...');
     console.log('🚀 Generating personalized path for profile:', profile);
     setGeneratingPath(true);
-    setAlert(null);    try {
+    setAlert(null);try {
       // Track usage before generating
       const tracked = await trackUsage('useMyStudyPath');
       if (!tracked) {
@@ -441,6 +461,56 @@ const MyStudyAbroadPath = () => {
             </Button>
           </div>
         </div>
+      </div>    );
+  }
+
+  // Check subscription access for MyStudyPath
+  if (limits && usage && !canPerformAction('useMyStudyPath')) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <FaCrown className="mx-auto text-yellow-500 text-6xl mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Premium Feature</h2>
+          <p className="text-gray-600 mb-6">
+            My Study Abroad Path is a premium feature that provides personalized pathway tracking and guidance.
+            Upgrade your plan to access your complete study abroad roadmap.
+          </p>
+          <div className="bg-gray-50 rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">With Premium, you get:</h3>
+            <ul className="text-left space-y-2 text-gray-700">
+              <li className="flex items-center"><FaCheckCircle className="text-green-500 mr-2" /> Personalized study abroad pathway</li>
+              <li className="flex items-center"><FaCheckCircle className="text-green-500 mr-2" /> Step-by-step guidance and tracking</li>
+              <li className="flex items-center"><FaCheckCircle className="text-green-500 mr-2" /> Timeline management and reminders</li>
+              <li className="flex items-center"><FaCheckCircle className="text-green-500 mr-2" /> Visa requirements and documentation help</li>
+              <li className="flex items-center"><FaCheckCircle className="text-green-500 mr-2" /> Cost breakdown and budget planning</li>
+            </ul>
+          </div>
+          <Button 
+            onClick={() => setShowUpgradeModal(true)}
+            className="bg-yellow-600 hover:bg-yellow-700"
+          >
+            Upgrade to Premium
+          </Button>
+        </div>
+        
+        {showUpgradeModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold">Choose Your Plan</h3>
+                  <button 
+                    onClick={() => setShowUpgradeModal(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <SubscriptionPlans />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

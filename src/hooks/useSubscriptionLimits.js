@@ -6,15 +6,19 @@ export const useSubscriptionLimits = () => {
   const { currentUser, subscriptionData } = useAuth();
   const [limits, setLimits] = useState(null);
   const [usage, setUsage] = useState(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
+  const [loading, setLoading] = useState(true);  useEffect(() => {
     const planType = subscriptionData?.planType || 'free';
-      // Set limits based on plan type
+    
+    console.log('📊 Subscription data updated:', {
+      subscriptionData,
+      planType,
+      hasUsage: !!subscriptionData?.usage
+    });    // Set limits based on plan type
     const planLimits = {
       free: {
         pathwaysPerMonth: 1, // Keep original pathway generation limit
-        uniGuideProUsage: 3, // Allow 3 free UniGuidePro uses
-        myStudyPathUsage: 0, // Require paid plan for MyStudyAbroadPath
+        uniGuideProUsage: -1, // UniGuidePro is now FREE for all users (unlimited)
+        myStudyPathUsage: 0, // MyStudyAbroadPath requires paid plan
         universityComparisons: 3,
         pdfExports: 0,
         advancedFilters: false,
@@ -38,29 +42,82 @@ export const useSubscriptionLimits = () => {
         advancedFilters: true,
         analytics: true
       }
-    };    setLimits(planLimits[planType]);
-    setUsage(subscriptionData?.usage || {
+    };
+    
+    const currentLimits = planLimits[planType];
+    const currentUsage = subscriptionData?.usage || {
       pathwaysGenerated: 0,
       uniGuideProUsage: 0,
       myStudyPathUsage: 0,
       universityComparisons: 0,
       pdfExports: 0
+    };
+    
+    console.log('🎯 Setting limits and usage:', {
+      planType,
+      currentLimits,
+      currentUsage
     });
+    
+    setLimits(currentLimits);
+    setUsage(currentUsage);
     setLoading(false);
   }, [subscriptionData]);
+
   // Check if user can perform an action
   const canPerformAction = (action) => {
-    if (!limits || !usage) return false;
+    console.log('🔍 canPerformAction check:', {
+      action,
+      limits,
+      usage,
+      hasLimits: !!limits,
+      hasUsage: !!usage,
+      // Add detailed structure logging
+      limitsDetail: limits ? {
+        pathwaysPerMonth: limits.pathwaysPerMonth,
+        uniGuideProUsage: limits.uniGuideProUsage,
+        myStudyPathUsage: limits.myStudyPathUsage
+      } : null,
+      usageDetail: usage ? {
+        pathwaysGenerated: usage.pathwaysGenerated,
+        uniGuideProUsage: usage.uniGuideProUsage,
+        myStudyPathUsage: usage.myStudyPathUsage
+      } : null
+    });
+
+    if (!limits || !usage) {
+      console.log('❌ No limits or usage data available');
+      return false;
+    }
 
     switch (action) {
       case 'generatePathway':
-        return limits.pathwaysPerMonth === -1 || usage.pathwaysGenerated < limits.pathwaysPerMonth;
+      case 'pathway_generation':
+        const canGeneratePathway = limits.pathwaysPerMonth === -1 || usage.pathwaysGenerated < limits.pathwaysPerMonth;
+        console.log('🗺️ generatePathway/pathway_generation check:', {
+          limit: limits.pathwaysPerMonth,
+          used: usage.pathwaysGenerated,
+          canDo: canGeneratePathway
+        });
+        return canGeneratePathway;
       
       case 'useUniGuidePro':
-        return limits.uniGuideProUsage === -1 || usage.uniGuideProUsage < limits.uniGuideProUsage;
+        const canUseUniGuidePro = limits.uniGuideProUsage === -1 || usage.uniGuideProUsage < limits.uniGuideProUsage;
+        console.log('🎓 useUniGuidePro check:', {
+          limit: limits.uniGuideProUsage,
+          used: usage.uniGuideProUsage,
+          canDo: canUseUniGuidePro
+        });
+        return canUseUniGuidePro;
       
       case 'useMyStudyPath':
-        return limits.myStudyPathUsage === -1 || usage.myStudyPathUsage < limits.myStudyPathUsage;
+        const canUseMyStudyPath = limits.myStudyPathUsage === -1 || usage.myStudyPathUsage < limits.myStudyPathUsage;
+        console.log('📚 useMyStudyPath check:', {
+          limit: limits.myStudyPathUsage,
+          used: usage.myStudyPathUsage,
+          canDo: canUseMyStudyPath
+        });
+        return canUseMyStudyPath;
       
       case 'compareUniversities':
         return limits.universityComparisons === -1 || usage.universityComparisons < limits.universityComparisons;
@@ -75,6 +132,7 @@ export const useSubscriptionLimits = () => {
         return limits.analytics;
       
       default:
+        console.log('❓ Unknown action:', action);
         return false;
     }
   };
@@ -168,11 +226,13 @@ export const useSubscriptionLimits = () => {
 
     return Math.min(100, (used / limit) * 100);
   };
-
   // Show upgrade prompt
   const showUpgradePrompt = (action, onUpgrade) => {
     const actionNames = {
       generatePathway: 'generate more study abroad pathways',
+      pathway_generation: 'generate more study abroad pathways',
+      useUniGuidePro: 'access UniGuide Pro features',
+      useMyStudyPath: 'access MyStudyAbroadPath features',
       compareUniversities: 'compare more universities',
       exportPdf: 'export documents as PDF',
       useAdvancedFilters: 'use advanced search filters',

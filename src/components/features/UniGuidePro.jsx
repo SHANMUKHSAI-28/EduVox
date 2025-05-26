@@ -85,15 +85,25 @@ const UniGuidePro = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
-  };
-  const handleSubmit = async (e) => {
+  };  const handleSubmit = async (e) => {
     e.preventDefault();
-      // Check subscription limits for UniGuidePro usage
+    
+    // Debug logging
+    console.log('🎓 UniGuidePro handleSubmit - Debug Info:', {
+      limits,
+      usage,
+      planType,
+      canUseUniGuidePro: canPerformAction('useUniGuidePro')
+    });
+    
+    // Check subscription limits for UniGuidePro usage
     if (!canPerformAction('useUniGuidePro')) {
+      console.log('❌ UniGuidePro: Cannot perform action, showing upgrade prompt');
       showUpgradePrompt('useUniGuidePro', () => setShowUpgradeModal(true));
       return;
     }
 
+    console.log('✅ UniGuidePro: Can perform action, proceeding...');
     setLoading(true);
 
     try {
@@ -309,10 +319,20 @@ const UniGuidePro = () => {
           <Button 
             variant="outline-primary" 
             onClick={() => {
+              console.log('🔄 Generate New Roadmap clicked - Debug Info:', {
+                limits,
+                usage,
+                planType,
+                canUseUniGuidePro: canPerformAction('useUniGuidePro')
+              });
+              
               if (!canPerformAction('useUniGuidePro')) {
+                console.log('❌ Generate New Roadmap: Cannot perform action, showing upgrade modal');
                 setShowUpgradeModal(true);
                 return;
               }
+              
+              console.log('✅ Generate New Roadmap: Can perform action, showing form');
               setShowForm(true);
             }}
             className="d-flex align-items-center"
