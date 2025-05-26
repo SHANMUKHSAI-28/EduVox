@@ -49,20 +49,20 @@ class AIRecommendationService {
       }
 
       const aiText = data.candidates[0].content.parts[0].text;
-      console.log('📄 Raw AI response received, parsing JSON...');
-
-      // Try to extract JSON from the response
+      console.log('📄 Raw AI response received, parsing JSON...');      // Try to extract JSON from the response
       let pathwayData;
       try {
         // Look for JSON in the response (might be wrapped in markdown code blocks)
         const jsonMatch = aiText.match(/```json\n?([\s\S]*?)\n?```/) || 
                          aiText.match(/\{[\s\S]*\}/);
         
-        if (jsonMatch) {
-          pathwayData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-        } else {
-          pathwayData = JSON.parse(aiText);
-        }
+        let jsonContent = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : aiText;
+        
+        // Remove comments in JSON (both single-line // comments and multi-line /* */ comments)
+        jsonContent = jsonContent.replace(/\/\/.*?(\r?\n|$)/g, '$1'); // Remove single-line comments
+        jsonContent = jsonContent.replace(/\/\*[\s\S]*?\*\//g, ''); // Remove multi-line comments
+        
+        pathwayData = JSON.parse(jsonContent);
       } catch (parseError) {
         console.error('Failed to parse AI response as JSON:', parseError);
         // Fallback: create a structured response from the text

@@ -343,16 +343,19 @@ Generate this comprehensive pathway now:`;
       const result = await this.model.generateContent(promptTemplate);
       const response = await result.response;
       const text = response.text();
-      
-      // Clean and parse the JSON response
+        // Clean and parse the JSON response
       let cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
       try {
+        // Remove comments in JSON (both single-line // comments and multi-line /* */ comments)
+        cleanText = cleanText.replace(/\/\/.*?(\r?\n|$)/g, '$1'); // Remove single-line comments
+        cleanText = cleanText.replace(/\/\*[\s\S]*?\*\//g, ''); // Remove multi-line comments
+        
         return JSON.parse(cleanText);
       } catch (parseError) {
         console.error('Failed to parse AI response:', parseError);
         console.log('Raw response:', text);
-        throw new Error('Failed to parse AI response as JSON');
+        throw new Error('Failed to parse AI response: ' + parseError.message);
       }
     } catch (error) {
       console.error('Error generating pathway with AI:', error);

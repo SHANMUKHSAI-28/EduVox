@@ -23,9 +23,10 @@ async function importScrapedUniversities() {
     console.log('🔥 Starting Firestore import of scraped university data...');
     
     // Read the scraped data
-    const dataPath = path.join(__dirname, '..', 'data', 'scraped-universities.json');
-    const rawData = await fs.readFile(dataPath, 'utf8');
-    const universities = JSON.parse(rawData);
+    const dataPath = path.join(__dirname, '..', 'data', 'scraped-universities.json');    const rawData = await fs.readFile(dataPath, 'utf8');
+    // Clean JSON from comments before parsing
+    const cleanData = rawData.replace(/\/\/.*?(\r?\n|$)/g, '$1').replace(/\/\*[\s\S]*?\*\//g, '');
+    const universities = JSON.parse(cleanData);
     
     console.log(`📊 Found ${universities.length} universities to import`);
     

@@ -23,9 +23,8 @@ const PathwayHistory = () => {
         return 5; // Free users can view last 5 pathways
     }
   };
-
   const pathwayLimit = getPathwayHistoryLimit();
-  const isFreePlan = !subscription?.planType || subscription?.planType === 'free';
+  const isFreePlan = !planType || planType === 'free';
   const limitedPathways = pathwayLimit ? pathwayHistory.slice(0, pathwayLimit) : pathwayHistory;
   const hasMorePathways = pathwayLimit && pathwayHistory.length > pathwayLimit;
 
@@ -101,13 +100,12 @@ const PathwayHistory = () => {
               ? `View your last ${pathwayLimit} study abroad pathways`
               : 'View all your generated study abroad pathways'
             }
-          </p>
-          {subscription?.planType && (
+          </p>          {planType && (
             <div className="flex items-center mt-2">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white">
-                {subscription.planType.charAt(0).toUpperCase() + subscription.planType.slice(1)} Plan
+                {planType.charAt(0).toUpperCase() + planType.slice(1)} Plan
               </span>
-              {subscription?.planType === 'pro' && (
+              {planType === 'pro' && (
                 <span className="ml-2 text-xs text-primary-100">Unlimited Access</span>
               )}
             </div>

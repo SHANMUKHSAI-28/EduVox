@@ -1,0 +1,176 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
+import { academicProfileService } from '../../services/universityService';
+import studyAbroadService from '../../services/studyAbroadService';
+import SubscriptionPlans from '../subscription/SubscriptionPlans';
+import Button from '../common/Button';
+import Alert from '../common/Alert';
+import LoadingSpinner from '../common/LoadingSpinner';
+import { FaUser, FaGraduationCap, FaDollarSign, FaGlobe, FaCalendarAlt, FaCheckCircle, FaClock, FaExclamationTriangle, FaSync, FaBell, FaCrown } from 'react-icons/fa';
+
+const MyStudyAbroadPath = () => {
+  const { currentUser } = useAuth();
+  const { 
+    canPerformAction, 
+    getRemainingCount, 
+    trackUsage, 
+    showUpgradePrompt, 
+    planType,
+    limits,
+    usage,
+    loading: subscriptionLoading 
+  } = useSubscriptionLimits();
+  const [loading, setLoading] = useState(true);
+  const [generatingPath, setGeneratingPath] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [pathway, setPathway] = useState(null);
+  const [alert, setAlert] = useState(null);
+  const [activeStep, setActiveStep] = useState(null);
+  const [lastProfileUpdate, setLastProfileUpdate] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [profileHash, setProfileHash] = useState(null); // Track profile changes
+
+  // Effect to load user profile and pathway on mount
+  useEffect(() => {
+    if (currentUser && !subscriptionLoading) {
+      loadUserProfile();
+    }
+  }, [currentUser, subscriptionLoading]);
+
+  // Helper function to generate a hash of relevant profile fields
+  const generateProfileHash = (profile) => {
+    if (!profile) return null;
+    
+    const relevantFields = {
+      preferred_countries: profile.preferred_countries || [],
+      preferred_fields_of_study: profile.preferred_fields_of_study || [],
+      education_level: profile.education_level || '',
+      nationality: profile.nationality || '',
+      budget_min: profile.budget_min || 0,
+      budget_max: profile.budget_max || 0
+    };
+    
+    return JSON.stringify(relevantFields);
+  };
+
+  const loadUserProfile = async () => {
+    try {
+      const profile = await academicProfileService.getAcademicProfile(currentUser.uid);
+      setUserProfile(profile);
+      
+      if (profile && isProfileComplete(profile)) {
+        // Generate hash of current profile preferences
+        const currentProfileHash = generateProfileHash(profile);
+        
+        // Check subscription before loading existing pathway
+        if (canPerformAction('useMyStudyPath')) {
+          // Only check for selected pathway or profile changes if needed
+          if (!pathway || (profileHash && profileHash !== currentProfileHash)) {
+            console.log('🔄 Profile preferences changed or first load, checking for updates...');
+            
+            // Check if user has selected a pathway from UniGuidePro
+            try {
+              const selectedPathway = await studyAbroadService.getSelectedPathway(currentUser.uid);
+              if (selectedPathway) {
+                console.log('📋 Found selected pathway from UniGuidePro, generating detailed analysis...');
+                // Generate detailed AI-powered analysis
+                await generateDetailedAnalysis(selectedPathway, profile);
+                setProfileHash(currentProfileHash);
+                return;
+              }
+            } catch (error) {
+              console.log('📋 No selected pathway found or access denied, proceeding with existing pathway logic');
+              // Continue with normal flow - this is expected when no selected pathway exists
+            }
+            
+            // Try to load existing pathway or generate new one
+            await loadExistingPathway(profile, currentProfileHash !== profileHash);
+          } else {
+            console.log('✅ Profile unchanged, using existing pathway');
+            if (!pathway) {
+              // First load but no pathway exists
+              await loadExistingPathway(profile, false);
+            } else {
+              setAlert({
+                type: 'info',
+                message: 'Your saved study abroad pathway has been loaded.'
+              });
+            }
+          }
+          
+          // Update profile hash after processing
+          setProfileHash(currentProfileHash);
+        } else {
+          // User doesn't have access, show upgrade prompt
+          console.log('❌ MyStudyPath: User cannot access existing pathway, subscription required');
+          setLoading(false);
+          setAlert({
+            type: 'warning',
+            message: 'Upgrade to Premium to access AI-powered detailed study abroad analysis.'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      setAlert({
+        type: 'error',
+        message: 'Failed to load your profile. Please try again.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadExistingPathway = async (profile, forceRefresh = false) => {
+    try {
+      console.log('🔍 Loading existing pathway for user:', currentUser.uid);
+      // Try to get existing user pathway
+      const existingPathway = await studyAbroadService.getUserPathway(currentUser.uid);
+      console.log('📊 Existing pathway:', existingPathway);
+      
+      if (existingPathway) {
+        // Only check for admin updates if forced refresh or no recent check
+        if (forceRefresh) {
+          console.log('🔄 Force refresh requested due to profile changes');
+          // Check if pathway needs refresh due to admin updates
+          const refreshedPathway = await studyAbroadService.checkAndRefreshPathway(currentUser.uid, existingPathway);
+          console.log('🔄 Refresh check result:', refreshedPathway);
+          
+          if (refreshedPathway && refreshedPathway.success && refreshedPathway.pathway) {
+            console.log('✅ Setting refreshed pathway');
+            setPathway(refreshedPathway.pathway);
+            setAlert({
+              type: 'success',
+              message: '✨ Your pathway has been updated based on your profile changes!',
+              icon: <FaSync />
+            });
+          } else {
+            console.log('✅ Setting existing pathway (no admin updates found)');
+            setPathway(existingPathway);
+            setAlert({
+              type: 'info',
+              message: 'Your saved study abroad pathway has been loaded.'
+            });
+          }
+        } else {
+          console.log('✅ Loading existing pathway without refresh check');
+          setPathway(existingPathway);
+          setAlert({
+            type: 'info',
+            message: 'Your saved study abroad pathway has been loaded.'
+          });
+        }
+      } else {
+        console.log('❌ No existing pathway found, generating new one');
+        // Auto-generate pathway if profile is complete but no pathway exists
+        await generatePersonalizedPath(profile);
+      }
+    } catch (error) {
+      console.error('Error loading existing pathway:', error);
+      setAlert({
+        type: 'error',
+        message: 'Failed to load your pathway. Please try again.'
+      });
+    }
+  };

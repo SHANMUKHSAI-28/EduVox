@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import { academicProfileService } from '../../services/universityService';
 import studyAbroadService from '../../services/studyAbroadService';
-import { generateProfileHash, shouldUpdatePathway, ONLY_UPDATE_ON_PROFILE_CHANGE } from '../../utils/pathwayUpdateDetector';
 import SubscriptionPlans from '../subscription/SubscriptionPlans';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
@@ -25,18 +24,49 @@ const MyStudyAbroadPath = () => {
   const [generatingPath, setGeneratingPath] = useState(false);  const [userProfile, setUserProfile] = useState(null);
   const [pathway, setPathway] = useState(null);
   const [alert, setAlert] = useState(null);
-  const [activeStep, setActiveStep] = useState(null);  const [lastProfileUpdate, setLastProfileUpdate] = useState(null);
+  const [activeStep, setActiveStep] = useState(null);
+  const [lastProfileUpdate, setLastProfileUpdate] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [profileHash, setProfileHash] = useState(null); // Track profile changes
-  const profileHashKey = `profile-hash-${currentUser?.uid}`;
+  const [profileHash, setProfileHash] = useState(null); // Track profile changes
+
   // Effect to load user profile and pathway on mount
   useEffect(() => {
+  // Helper function to generate a hash of relevant profile fields
+  const generateProfileHash = (profile) => {
+    if (!profile) return null;
+    
+    const relevantFields = {
+      preferred_countries: profile.preferred_countries || [],
+      preferred_fields_of_study: profile.preferred_fields_of_study || [],
+      education_level: profile.education_level || "",
+      nationality: profile.nationality || "",
+      budget_min: profile.budget_min || 0,
+      budget_max: profile.budget_max || 0
+    };
+    
+    return JSON.stringify(relevantFields);
+  };
     if (currentUser && !subscriptionLoading) {
       loadUserProfile();
     }
   }, [currentUser, subscriptionLoading]);
 
-  const loadUserProfile = async () => {
+  // Helper function to generate a hash of relevant profile fields
+  const generateProfileHash = (profile) => {
+    if (!profile) return null;
+    
+    const relevantFields = {
+      preferred_countries: profile.preferred_countries || [],
+      preferred_fields_of_study: profile.preferred_fields_of_study || [],
+      education_level: profile.education_level || '',
+      nationality: profile.nationality || '',
+      budget_min: profile.budget_min || 0,
+      budget_max: profile.budget_max || 0
+    };
+    
+    return JSON.stringify(relevantFields);
+  };  const loadUserProfile = async () => {
     try {
       const profile = await academicProfileService.getAcademicProfile(currentUser.uid);
       setUserProfile(profile);
@@ -140,7 +170,8 @@ const MyStudyAbroadPath = () => {
           setAlert({
             type: 'info',
             message: 'Your saved study abroad pathway has been loaded.'
-          });        }      } else {
+          });
+        }      } else {
         console.log('❌ No existing pathway found, generating new one');
         // Auto-generate pathway if profile is complete but no pathway exists
         await generatePersonalizedPath(profile);
@@ -151,6 +182,13 @@ const MyStudyAbroadPath = () => {
         type: 'error',
         message: 'Failed to load your pathway. Please try again.'
       });
+    }
+  };
+      }
+    } catch (error) {
+      console.error('Error loading existing pathway:', error);
+      // Fallback to generating new pathway
+      await generatePersonalizedPath(profile);
     }
   };
 
@@ -457,6 +495,21 @@ const MyStudyAbroadPath = () => {
   };
   // Check for profile updates that might require pathway sync
   useEffect(() => {
+  // Helper function to generate a hash of relevant profile fields
+  const generateProfileHash = (profile) => {
+    if (!profile) return null;
+    
+    const relevantFields = {
+      preferred_countries: profile.preferred_countries || [],
+      preferred_fields_of_study: profile.preferred_fields_of_study || [],
+      education_level: profile.education_level || "",
+      nationality: profile.nationality || "",
+      budget_min: profile.budget_min || 0,
+      budget_max: profile.budget_max || 0
+    };
+    
+    return JSON.stringify(relevantFields);
+  };
     const checkForProfileUpdates = async () => {
       if (!currentUser || !userProfile || !pathway) return;
       
