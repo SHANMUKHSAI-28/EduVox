@@ -66,26 +66,58 @@ class StudyAbroadService {
         const adaptedPathway = await this.adaptSimilarPathway(similarPathways[0], userProfile);
         await this.saveUserPathway(userId, adaptedPathway);
         return adaptedPathway;
+      }      // Use AI generation as fallback when database is empty
+      console.log('No similar pathways found, generating with AI...');
+      const aiGeneratedPathway = await this.generatePathwayWithAI(userProfile);
+      
+      if (aiGeneratedPathway) {
+        // Store full pathway in database for future use
+        await this.savePathwayTemplate(aiGeneratedPathway);
+        await this.saveUserPathway(userId, aiGeneratedPathway);
+        
+        // Return limited or full pathway based on user subscription
+        const userTier = userProfile.userTier || 'free';
+        if (userTier === 'free') {
+          return this.createLimitedPathwayForFreeUsers(aiGeneratedPathway);
+        }
+        
+        return aiGeneratedPathway;
       }
-
-      // Last resort: create basic fallback pathway
-      console.log('No similar pathways found, creating basic fallback');
+      
+      // Last resort: create basic fallback pathway if AI fails
+      console.log('AI generation failed, creating basic fallback');
       const fallbackPathway = await this.createBasicFallbackPathway(userProfile);
       await this.saveUserPathway(userId, fallbackPathway);
       
-      return fallbackPathway;
-
-    } catch (error) {
+      return fallbackPathway;    } catch (error) {
       console.error('Error fetching study abroad pathway:', error);
       
-      // Emergency fallback
+      // Emergency fallback - try AI generation first
       try {
-        console.log('Attempting emergency fallback pathway generation');
+        console.log('Attempting emergency AI fallback pathway generation');
+        const aiEmergencyPathway = await this.generatePathwayWithAI(userProfile);
+        
+        if (aiEmergencyPathway) {
+          // Store full pathway in database for future use
+          await this.savePathwayTemplate(aiEmergencyPathway);
+          await this.saveUserPathway(userProfile.userId, aiEmergencyPathway);
+          
+          // Return limited or full pathway based on user subscription
+          const userTier = userProfile.userTier || 'free';
+          if (userTier === 'free') {
+            return this.createLimitedPathwayForFreeUsers(aiEmergencyPathway);
+          }
+          
+          return aiEmergencyPathway;
+        }
+        
+        // If AI generation fails, use basic fallback
+        console.log('Emergency AI generation failed, using basic fallback');
         const emergencyPathway = await this.createBasicFallbackPathway(userProfile);
         await this.saveUserPathway(userProfile.userId, emergencyPathway);
         return emergencyPathway;
       } catch (fallbackError) {
-        console.error('Emergency fallback also failed:', fallbackError);
+        console.error('All emergency fallbacks failed:', fallbackError);
         throw new Error('Failed to retrieve study abroad pathway');
       }
     }
@@ -2515,6 +2547,234 @@ Return a JSON object with the following structure:
 
 Make the analysis as detailed and personalized as possible based on the user's specific profile and selected pathway.
 `;
+  }
+
+  /**
+   * Generate a study abroad pathway using Gemini AI
+   * This is used as a fallback when database is empty
+   * @param {Object} userProfile - User profile data
+   * @returns {Object} AI generated pathway
+   */
+  async generatePathwayWithAI(userProfile) {
+    try {
+      console.log('Generating pathway with AI for:', userProfile.preferredCountry, userProfile.desiredCourse);
+      
+      // Prepare profile data for AI generation
+      const profile = {
+        country: userProfile.preferredCountry,
+        course: userProfile.desiredCourse,
+        academicLevel: userProfile.academicLevel,
+        budgetRange: userProfile.budgetRange || { min: 25000, max: 50000 },
+        nationality: userProfile.nationality || 'International'
+      };
+      
+      // Use pathwayScrapingService to generate the pathway
+      const aiGeneratedPathway = await pathwayScrapingService.generatePathwayWithAI(profile);
+      
+      if (!aiGeneratedPathway) {
+        throw new Error('Failed to generate pathway with AI');
+      }
+      
+      // Add metadata to the AI generated pathway
+      const pathwayWithMetadata = {
+        ...aiGeneratedPathway,
+        id: this.generatePathwayId(profile.country, profile.course, profile.academicLevel),
+        country: profile.country,
+        course: profile.course,
+        academicLevel: profile.academicLevel,
+        generatedBy: 'Gemini AI',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      console.log('✅ Successfully generated pathway with AI');
+      return pathwayWithMetadata;
+    } catch (error) {
+      console.error('Error generating pathway with AI:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Save AI-generated pathway as a template for future use
+   * @param {Object} pathway - The AI-generated pathway
+   */
+  async savePathwayTemplate(pathway) {
+    try {
+      const pathwayId = pathway.id || this.generatePathwayId(pathway.country, pathway.course, pathway.academicLevel);
+      
+      // Check if template already exists
+      const existingTemplate = await this.getExistingPathway(pathwayId);
+      
+      if (!existingTemplate) {
+        // Save as template in the pathways collection
+        await setDoc(doc(db, this.pathwaysCollection, pathwayId), {
+          ...pathway,
+          id: pathwayId,
+          isTemplate: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+        console.log('✅ Saved AI-generated pathway as template for future use');
+      } else {
+        console.log('Template already exists, skipping save');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving pathway template:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Create a limited version of the pathway for free users
+   * Provides basic information while hiding premium details
+   * @param {Object} fullPathway - The complete pathway data
+   * @returns {Object} Limited pathway with basic information
+   */
+  createLimitedPathwayForFreeUsers(fullPathway) {
+    try {
+      // Basic metadata to keep
+      const limitedPathway = {
+        id: fullPathway.id,
+        country: fullPathway.country,
+        course: fullPathway.course,
+        academicLevel: fullPathway.academicLevel,
+        createdAt: fullPathway.createdAt,
+        updatedAt: fullPathway.updatedAt,
+        
+        // Keep universities but limit the number and details
+        universities: fullPathway.universities 
+          ? fullPathway.universities.slice(0, 3).map(uni => ({
+              name: uni.name,
+              ranking: uni.ranking,
+              location: uni.location
+              // Remove tuition, detailed requirements, specialties, etc.
+            }))
+          : [],
+        
+        // Keep timeline but limit details
+        timeline: fullPathway.timeline 
+          ? fullPathway.timeline.slice(0, 3).map(item => ({
+              month: item.month,
+              timeFromStart: item.timeFromStart,
+              tasks: item.tasks ? item.tasks.slice(0, 2) : []
+              // Remove priority, documents, etc.
+            }))
+          : [],
+          
+        // Basic visa information only
+        visaRequirements: fullPathway.visaRequirements
+          ? {
+              type: fullPathway.visaRequirements.type,
+              processingTime: fullPathway.visaRequirements.processingTime
+              // Remove detailed requirements, fees, etc.
+            }
+          : {},
+          
+        // Basic costs only
+        costs: fullPathway.costs
+          ? {
+              tuition: {
+                annual: fullPathway.costs.tuition?.annual
+              },
+              totalEstimate: fullPathway.costs.totalEstimate
+              // Remove detailed breakdown
+            }
+          : {},
+          
+        // Remove documents, scholarships, language requirements, etc.
+        
+        // Add upgrade message
+        isPremiumContentLimited: true,
+        upgradeMessage: "Upgrade to Premium or Pro to access detailed pathway information, including scholarship opportunities, document requirements, and university-specific preparation steps."
+      };
+      
+      // Add steps from fullPathway or create basic steps
+      limitedPathway.steps = fullPathway.steps 
+        ? fullPathway.steps.slice(0, 5).map(step => ({
+            step: step.step,
+            title: step.title,
+            description: step.description,
+            duration: step.duration,
+            // Remove detailed tasks and other information
+            tasks: step.tasks ? [step.tasks[0], "... Upgrade for more details"] : [],
+            status: "pending",
+            isLimited: true
+          }))
+        : this.createBasicSteps(fullPathway.country, fullPathway.course);
+      
+      return limitedPathway;
+    } catch (error) {
+      console.error('Error creating limited pathway for free users:', error);
+      // If there's an error, return a very basic pathway
+      return {
+        id: fullPathway.id,
+        country: fullPathway.country,
+        course: fullPathway.course,
+        academicLevel: fullPathway.academicLevel,
+        isPremiumContentLimited: true,
+        upgradeMessage: "Upgrade to Premium or Pro to access detailed pathway information.",
+        steps: this.createBasicSteps(fullPathway.country, fullPathway.course)
+      };
+    }
+  }
+  
+  /**
+   * Create basic steps for free users when detailed steps aren't available
+   * @param {string} country - Target country
+   * @param {string} course - Desired course
+   * @returns {Array} Basic pathway steps
+   */
+  createBasicSteps(country, course) {
+    return [
+      {
+        step: 1,
+        title: "Academic Preparation",
+        description: "Prepare your academic credentials",
+        duration: "6-12 months",
+        tasks: ["Maintain/improve your GPA", "... Upgrade for more details"],
+        status: "pending",
+        isLimited: true
+      },
+      {
+        step: 2,
+        title: "Standardized Tests",
+        description: "Prepare and take required standardized tests",
+        duration: "3-6 months",
+        tasks: ["Research required tests", "... Upgrade for more details"],
+        status: "pending",
+        isLimited: true
+      },
+      {
+        step: 3,
+        title: "University Research",
+        description: "Research and shortlist universities",
+        duration: "2-3 months",
+        tasks: ["Check admission requirements", "... Upgrade for more details"],
+        status: "pending",
+        isLimited: true
+      },
+      {
+        step: 4,
+        title: "Application Process",
+        description: "Apply to selected universities",
+        duration: "2-3 months",
+        tasks: ["Prepare application documents", "... Upgrade for more details"],
+        status: "pending",
+        isLimited: true
+      },
+      {
+        step: 5,
+        title: "Visa Application",
+        description: "Apply for student visa",
+        duration: "2-3 months",
+        tasks: ["Gather required documents", "... Upgrade for more details"],
+        status: "pending",
+        isLimited: true
+      }
+    ];
   }
 }
 

@@ -28,8 +28,36 @@ import {
   FaClock, 
   FaExclamationTriangle,
   FaCrown,
-  FaInfoCircle
+  FaInfoCircle,
+  FaLock
 } from 'react-icons/fa';
+
+// Custom CSS for the roadmap steps
+const customStyles = {
+  limitedStep: {
+    backgroundColor: '#f8f9fa',
+    borderLeft: '3px solid #ffc107',
+  },
+  limitedStepHeader: {
+    opacity: 0.85,
+  },
+  premiumBadge: {
+    backgroundColor: '#ffc107',
+    color: '#212529',
+    fontSize: '0.7em',
+    padding: '0.25em 0.6em'
+  },
+  upgradeLink: {
+    color: '#ffc107',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    display: 'inline-flex',
+    alignItems: 'center',
+    marginLeft: '0.5rem',
+    fontSize: '0.85em'
+  }
+};
 
 const UniGuidePro = () => {
   const { currentUser } = useAuth();
@@ -153,13 +181,17 @@ const UniGuidePro = () => {
 
     try {
       // Track usage
-      await trackUsage('useUniGuidePro');
-
-      const userProfile = {
+      await trackUsage('useUniGuidePro');      const userProfile = {
         userId: currentUser.uid,
         ...formData,
         budget: formData.budget ? parseInt(formData.budget) : null,
-        currentGPA: formData.currentGPA ? parseFloat(formData.currentGPA) : null
+        budgetRange: {
+          min: 25000,
+          max: formData.budget ? parseInt(formData.budget) : 50000
+        },
+        currentGPA: formData.currentGPA ? parseFloat(formData.currentGPA) : null,
+        // Include user's subscription tier for content limiting
+        userTier: planType || 'free'
       };
 
       const generatedPathway = await studyAbroadService.generatePathway(userProfile);
@@ -693,15 +725,47 @@ const UniGuidePro = () => {
             </Card.Body>
           </Card>
         </motion.div>
-      )}
-
-      {/* Pathway Results */}
+      )}      {/* Pathway Results */}
       {pathway && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
+          {/* Limited Pathway Notice for Free Users */}
+          {pathway.isPremiumContentLimited && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Alert variant="info" className="mb-4 border-2 border-info shadow-sm">
+                <div className="d-flex">
+                  <div className="me-3">
+                    <FaInfoCircle className="text-info" style={{ fontSize: '2rem' }} />
+                  </div>
+                  <div>
+                    <h5 className="text-info">Limited Preview Version</h5>
+                    <p className="mb-2">
+                      You're viewing a limited version of your study abroad pathway. As a free user, 
+                      you get access to basic steps but detailed information is restricted.
+                    </p>
+                    <p className="mb-3">{pathway.upgradeMessage}</p>
+                    <Button 
+                      variant="outline-info" 
+                      size="sm"
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="mt-1"
+                    >
+                      <FaCrown className="me-2" />
+                      Upgrade to Premium
+                    </Button>
+                  </div>
+                </div>
+              </Alert>
+            </motion.div>
+          )}
+          
           {/* Usage Information for Limited Plans */}
           {!subscriptionLoading && limits && limits.uniGuideProUsage !== -1 && (
             <Card className="mb-4 border-info">
@@ -768,6 +832,125 @@ const UniGuidePro = () => {
                   <p><strong>Pending:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'pending').length}</p>
                 </Col>
               </Row>
+            </Card.Body>
+          </Card>
+
+          {/* Roadmap Steps */}
+          <Card className="mb-4 border-0 shadow">
+            <Card.Header className="bg-gradient text-white" style={{ background: 'linear-gradient(45deg, #6a11cb 0%, #2575fc 100%)' }}>
+              <h5 className="mb-0 d-flex align-items-center">
+                <FaCheckCircle className="me-2" />
+                Step-by-Step Roadmap
+              </h5>
+            </Card.Header>
+            <Card.Body>              <Accordion defaultActiveKey="0" className="roadmap-steps">
+                {(pathway.data?.steps || pathway.steps || []).map((step, index) => (
+                  <Accordion.Item 
+                    eventKey={index.toString()} 
+                    key={step.step}
+                    style={step.isLimited ? customStyles.limitedStep : {}}
+                    className={step.isLimited ? "limited-step" : ""}
+                  >
+                    <Accordion.Header 
+                      style={step.isLimited ? customStyles.limitedStepHeader : {}}
+                    >
+                      <div className="d-flex align-items-center w-100">
+                        <span className="me-3">{getStepIcon(step.status)}</span>
+                        <span className="me-2">Step {step.step}: </span>
+                        <span className="fw-semibold">{step.title}</span>
+                        
+                        {/* Limited content indicator for free users */}
+                        {step.isLimited && (
+                          <Badge 
+                            className="ms-2" 
+                            style={customStyles.premiumBadge}
+                          >
+                            <FaCrown className="me-1" style={{ fontSize: '0.8em' }} />
+                            Limited Preview
+                          </Badge>
+                        )}
+                        
+                        <Badge 
+                          bg={getStepVariant(step.status)} 
+                          className="ms-auto me-3"
+                        >
+                          {step.status}
+                        </Badge>
+                        <small className="text-muted">{step.duration}</small>
+                      </div>
+                    </Accordion.Header>
+                    <Accordion.Body>
+                      <p>{step.description}</p>
+                        <h6 className="mt-3 mb-2">Tasks:</h6>
+                      <ul className="mb-3">
+                        {step.tasks?.map((task, taskIndex) => (
+                          <li key={taskIndex} 
+                            className={taskIndex === 1 && step.isLimited ? "text-muted fst-italic d-flex align-items-center" : ""}>
+                            {taskIndex === 1 && step.isLimited && (
+                              <span className="me-2 text-warning">
+                                <FaLock size={12} />
+                              </span>
+                            )}
+                            <span>{task}</span>
+                            {taskIndex === 1 && step.isLimited && (
+                              <span
+                                style={customStyles.upgradeLink}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowUpgradeModal(true);
+                                }}
+                              >
+                                <FaCrown className="me-1" size={12} />
+                                Unlock all tasks
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                        {step.isLimited ? (
+                        <div className="mt-4 p-3 bg-light rounded border-start border-warning border-3">
+                          <div className="d-flex align-items-center">
+                            <div className="flex-shrink-0 me-3">
+                              <div className="bg-warning bg-opacity-10 p-2 rounded-circle">
+                                <FaCrown className="text-warning" style={{ fontSize: '1.2rem' }} />
+                              </div>
+                            </div>
+                            <div className="flex-grow-1">
+                              <h6 className="fw-semibold mb-1">Premium Content Locked</h6>
+                              <p className="text-muted small mb-2">
+                                Unlock detailed guidance, resources, document templates, and expert tips for each step.
+                              </p>
+                              <Button 
+                                variant="warning" 
+                                size="sm"
+                                className="text-dark fw-semibold"
+                                onClick={() => setShowUpgradeModal(true)}
+                              >
+                                <FaCrown className="me-2" />
+                                Upgrade to Premium
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3">
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedStep(step);
+                              setShowModal(true);
+                            }}
+                          >
+                            <FaClock className="me-1" />
+                            View Details & Update Status
+                          </Button>
+                        </div>
+                      )}
+                    </Accordion.Body>
+                  </Accordion.Item>
+                ))}
+              </Accordion>
             </Card.Body>
           </Card>
 
@@ -854,7 +1037,7 @@ const UniGuidePro = () => {
             </Card.Body>
           </Card>
         </motion.div>
-      )}
+      )}      {/* Step modal and subscription plans */}
 
       <StepModal />
       
