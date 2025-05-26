@@ -1,10 +1,10 @@
 // Razorpay Payment Service for EduVox Subscription Management
 import subscriptionService from './subscriptionService';
 
-class PaymentService {
-  constructor() {
-    this.razorpayKeyId = process.env.REACT_APP_RAZORPAY_KEY_ID;
-    this.razorpayKeySecret = process.env.REACT_APP_RAZORPAY_KEY_SECRET;
+class PaymentService {  constructor() {
+    // Use the actual keys directly
+    this.razorpayKeyId = "rzp_live_CpIJMtnnaKTRht";
+    this.razorpayKeySecret = "j4Kzhi78U6Wq1BoZIBsR8b8G";
   }
 
   // Load Razorpay script dynamically

@@ -2776,6 +2776,119 @@ Make the analysis as detailed and personalized as possible based on the user's s
       }
     ];
   }
+  
+  /**
+   * Get university recommendations using AI
+   * @param {Object} profile - User profile with preferred country, course, etc.
+   * @returns {Array} - List of university recommendations
+   */
+  async getUniversityRecommendations(profile) {
+    try {
+      console.log('Getting AI-powered university recommendations');
+      
+      // First check if we can find universities in existing pathways
+      const existingPathways = await this.findSimilarPathways(profile);
+      
+      if (existingPathways && existingPathways.length > 0 && existingPathways[0].universities) {
+        console.log('Found universities in existing pathway');
+        return existingPathways[0].universities.slice(0, 5); // Return top 5 universities
+      }
+      
+      // If no universities in existing pathways, generate them with AI
+      console.log('No universities found, generating with AI');
+      const partialPathway = await pathwayScrapingService.generatePathwayWithAI({
+        ...profile,
+        universityOnly: true // Flag to optimize AI generation
+      });
+      
+      if (partialPathway && partialPathway.universities) {
+        return partialPathway.universities.slice(0, 5);
+      }
+      
+      throw new Error('Failed to generate university recommendations');
+    } catch (error) {
+      console.error('Error getting university recommendations:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get scholarship opportunities using AI
+   * @param {Object} profile - User profile with preferred country, course, etc.
+   * @returns {Array} - List of scholarship opportunities
+   */
+  async getScholarshipOpportunities(profile) {
+    try {
+      console.log('Getting AI-powered scholarship opportunities');
+      
+      // First check if we can find scholarships in existing pathways
+      const existingPathways = await this.findSimilarPathways(profile);
+      
+      if (existingPathways && existingPathways.length > 0 && existingPathways[0].scholarships) {
+        console.log('Found scholarships in existing pathway');
+        return existingPathways[0].scholarships.slice(0, 3); // Return top 3 scholarships
+      }
+      
+      // If no scholarships in existing pathways, generate them with AI
+      console.log('No scholarships found, generating with AI');
+      const partialPathway = await pathwayScrapingService.generatePathwayWithAI({
+        ...profile,
+        scholarshipOnly: true // Flag to optimize AI generation
+      });
+      
+      if (partialPathway && partialPathway.scholarships) {
+        return partialPathway.scholarships.slice(0, 3);
+      }
+      
+      throw new Error('Failed to generate scholarship opportunities');
+    } catch (error) {
+      console.error('Error getting scholarship opportunities:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get pathway steps using AI
+   * @param {Object} profile - User profile with preferred country, course, etc.
+   * @returns {Array} - List of pathway steps
+   */
+  async getPathwaySteps(profile) {
+    try {
+      console.log('Getting AI-powered pathway steps');
+      
+      // First check if we can find steps in existing pathways
+      const existingPathways = await this.findSimilarPathways(profile);
+      
+      if (existingPathways && existingPathways.length > 0 && 
+         (existingPathways[0].steps || existingPathways[0].data?.steps)) {
+        console.log('Found steps in existing pathway');
+        const steps = existingPathways[0].steps || existingPathways[0].data?.steps || [];
+        return steps.map(step => ({
+          ...step,
+          isLimited: true
+        }));
+      }
+      
+      // If no steps in existing pathways, generate them with AI
+      console.log('No steps found, generating with AI');
+      const partialPathway = await pathwayScrapingService.generatePathwayWithAI({
+        ...profile,
+        stepsOnly: true // Flag to optimize AI generation
+      });
+      
+      if (partialPathway && partialPathway.steps) {
+        return partialPathway.steps.map(step => ({
+          ...step,
+          isLimited: true
+        }));
+      }
+      
+      throw new Error('Failed to generate pathway steps');
+    } catch (error) {
+      console.error('Error getting pathway steps:', error);
+      throw error;
+    }
+  }
 }
 
 export default new StudyAbroadService();

@@ -47,6 +47,23 @@ const customStyles = {
     fontSize: '0.7em',
     padding: '0.25em 0.6em'
   },
+  premiumFeature: {
+    position: 'relative',
+    overflow: 'hidden'
+  },
+  premiumOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(255, 255, 255, 0.7)',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10
+  },
   upgradeLink: {
     color: '#ffc107',
     textDecoration: 'none',
@@ -361,6 +378,95 @@ const UniGuidePro = () => {
       </Modal.Body>
     </Modal>
   );
+  // Get dynamically generated pathway steps using AI
+  const getDefaultSteps = async (country, course) => {
+    try {
+      // Use studyAbroadService to generate personalized steps
+      const profile = {
+        country: country || "United States",
+        course: course || "Computer Science",
+        academicLevel: "graduate"
+      };
+      
+      // Use the service to get AI-generated steps
+      const steps = await studyAbroadService.getPathwaySteps(profile);
+      
+      // Ensure all steps have isLimited set for free users
+      return steps.map((step, index) => ({
+        ...step,
+        step: step.step || index + 1,
+        status: step.status || "pending",
+        isLimited: true
+      }));
+    } catch (error) {
+      console.error('Failed to get pathway steps:', error);
+      
+      // If AI generation fails, return minimal placeholder data
+      return [
+        {
+          step: 1,
+          title: "Loading your custom pathway...",
+          description: "We're generating a personalized study abroad plan for you. Please wait a moment.",
+          duration: "Calculating timeline...",
+          tasks: ["Please wait while we gather information"],
+          status: "pending",
+          isLimited: true
+        }
+      ];
+    }
+  };
+  // Get dynamically generated university recommendations
+  const getUniversityRecommendations = async (country, course) => {
+    try {
+      // First try to get real data
+      const profile = {
+        country: country || "United States",
+        course: course || "Computer Science",
+        academicLevel: "graduate"
+      };
+      
+      // Use the AI service to generate university recommendations
+      const recommendations = await studyAbroadService.getUniversityRecommendations(profile);
+      return recommendations;
+    } catch (error) {
+      console.error('Failed to get university recommendations:', error);
+      
+      // Return minimal placeholder data if AI generation fails
+      return [
+        { name: "Loading university data...", 
+          ranking: "Retrieving...", 
+          location: "Please wait while we gather information", 
+          tuitionFee: "Calculating..." }
+      ];
+    }
+  };
+  
+  // Function to get AI-generated scholarship opportunities
+  const getScholarshipOpportunities = async (country, course) => {
+    try {
+      // Use the AI service to generate scholarship recommendations
+      const profile = {
+        country: country || "United States",
+        course: course || "Computer Science",
+        academicLevel: "graduate"
+      };
+      
+      const scholarships = await studyAbroadService.getScholarshipOpportunities(profile);
+      return scholarships;
+    } catch (error) {
+      console.error('Failed to get scholarship opportunities:', error);
+      
+      // Return minimal placeholder data if AI generation fails
+      return [
+        { 
+          name: "Loading scholarship data...",
+          amount: "Retrieving information...",
+          eligibility: "Please wait while we gather eligibility criteria",
+          deadline: "Calculating application deadlines..."
+        }
+      ];
+    }
+  };
 
   if (loading) {
     return (
@@ -726,33 +832,37 @@ const UniGuidePro = () => {
           </Card>
         </motion.div>
       )}      {/* Pathway Results */}
-      {pathway && (
+      {(pathway || currentUser) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-        >
-          {/* Limited Pathway Notice for Free Users */}
-          {pathway.isPremiumContentLimited && (
+        >          {/* Limited Pathway Notice for Free Users */}
+          {(pathway?.isPremiumContentLimited || planType === 'free') && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Alert variant="info" className="mb-4 border-2 border-info shadow-sm">
+              <Alert variant="warning" className="mb-4 border-2 border-warning shadow-sm">
                 <div className="d-flex">
                   <div className="me-3">
-                    <FaInfoCircle className="text-info" style={{ fontSize: '2rem' }} />
+                    <FaCrown className="text-warning" style={{ fontSize: '2rem' }} />
                   </div>
                   <div>
-                    <h5 className="text-info">Limited Preview Version</h5>
+                    <h5 className="text-warning">Free Version - Limited Features</h5>
                     <p className="mb-2">
-                      You're viewing a limited version of your study abroad pathway. As a free user, 
-                      you get access to basic steps but detailed information is restricted.
+                      You're viewing a limited version of the study abroad pathway. As a free user, 
+                      you get access to basic information. Premium features include:
                     </p>
-                    <p className="mb-3">{pathway.upgradeMessage}</p>
+                    <ul className="mb-3">
+                      <li><strong>AI-Powered Recommendations:</strong> Personalized university suggestions based on your profile</li>
+                      <li><strong>Scholarship Database:</strong> Access to country-specific scholarship opportunities</li>
+                      <li><strong>Detailed Roadmap:</strong> Comprehensive step-by-step guide with timeline</li>
+                      <li><strong>Document Templates:</strong> Ready-to-use templates for applications</li>
+                    </ul>
                     <Button 
-                      variant="outline-info" 
+                      variant="warning" 
                       size="sm"
                       onClick={() => setShowUpgradeModal(true)}
                       className="mt-1"
@@ -796,14 +906,11 @@ const UniGuidePro = () => {
                 </Row>
               </Card.Body>
             </Card>
-          )}
-
-          {/* Progress Overview */}
-          <Card className="mb-4 border-0 shadow">
+          )}          {/* Progress Overview */}          <Card className="mb-4 border-0 shadow">
             <Card.Header className="bg-primary text-white">
               <h4 className="mb-0 d-flex align-items-center">
                 <FaMapMarkedAlt className="me-2" />
-                Your Study Abroad Journey to {pathway.country}
+                Your Study Abroad Journey to {pathway?.country || formData.preferredCountry || "Your Destination"}
               </h4>
             </Card.Header>
             <Card.Body>
@@ -815,27 +922,55 @@ const UniGuidePro = () => {
                     label={`${Math.round(getProgressPercentage())}%`}
                     className="mb-3"
                     style={{ height: '1rem' }}
+                    variant={getProgressPercentage() > 0 ? "success" : "primary"}
                   />
-                  <p><strong>Course:</strong> {pathway.course}</p>
-                  <p><strong>Academic Level:</strong> {pathway.academicLevel}</p>
+                  <p><strong>Course:</strong> {pathway?.course || formData.desiredCourse || "Not specified"}</p>
+                  <p><strong>Academic Level:</strong> {pathway?.academicLevel || formData.academicLevel || "Not specified"}</p>
                   <p><strong>Estimated Timeline:</strong> {
-                    pathway.data?.timeline?.totalDuration || 
-                    pathway.timeline?.totalDuration || 
-                    'Not specified'
+                    pathway?.data?.timeline?.totalDuration || 
+                    pathway?.timeline?.totalDuration || 
+                    pathway?.estimatedDuration ||
+                    "18-24 months (typical duration)"
                   }</p>
+                  
+                  {!pathway?.data?.steps && !pathway?.steps && !pathway?.loadingSteps && (
+                    <Alert variant="info" className="mt-3 mb-0">
+                      <FaInfoCircle className="me-2" />
+                      Create your personalized pathway by clicking the "Generate Your Personalized Steps" button below.
+                    </Alert>
+                  )}
                 </Col>
                 <Col md={4}>
                   <h6>Quick Stats</h6>
-                  <p><strong>Total Steps:</strong> {(pathway.data?.steps || pathway.steps || []).length}</p>
-                  <p><strong>Completed:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'completed').length}</p>
-                  <p><strong>In Progress:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'in-progress').length}</p>
-                  <p><strong>Pending:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'pending').length}</p>
+                  {(pathway?.data?.steps || pathway?.steps || []).length > 0 ? (
+                    <>
+                      <p><strong>Total Steps:</strong> {(pathway?.data?.steps || pathway?.steps || []).length}</p>
+                      <p><strong>Completed:</strong> {(pathway?.data?.steps || pathway?.steps || []).filter(s => s.status === 'completed').length}</p>
+                      <p><strong>In Progress:</strong> {(pathway?.data?.steps || pathway?.steps || []).filter(s => s.status === 'in-progress').length}</p>
+                      <p><strong>Pending:</strong> {(pathway?.data?.steps || pathway?.steps || []).filter(s => s.status === 'pending').length}</p>
+                    </>
+                  ) : pathway?.loadingSteps ? (
+                    <div className="text-center">
+                      <Spinner animation="border" size="sm" className="me-2" />
+                      <span>Loading stats...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <p><strong>Total Steps:</strong> -</p>
+                      <p><strong>Completed:</strong> -</p>
+                      <p><strong>In Progress:</strong> -</p>
+                      <p><strong>Pending:</strong> -</p>
+                      
+                      <div className="alert alert-info py-2 small mt-3 mb-0">
+                        <FaInfoCircle className="me-1" /> 
+                        Generate your personalized pathway to see statistics
+                      </div>
+                    </>
+                  )}
                 </Col>
               </Row>
             </Card.Body>
-          </Card>
-
-          {/* Roadmap Steps */}
+          </Card>{/* Roadmap Steps */}
           <Card className="mb-4 border-0 shadow">
             <Card.Header className="bg-gradient text-white" style={{ background: 'linear-gradient(45deg, #6a11cb 0%, #2575fc 100%)' }}>
               <h5 className="mb-0 d-flex align-items-center">
@@ -844,7 +979,78 @@ const UniGuidePro = () => {
               </h5>
             </Card.Header>
             <Card.Body>              <Accordion defaultActiveKey="0" className="roadmap-steps">
-                {(pathway.data?.steps || pathway.steps || []).map((step, index) => (
+                {/* Loading State for Steps */}
+                {((pathway?.data?.steps || pathway?.steps || []).length === 0 && !pathway?.loadingSteps) && (
+                  <div className="text-center py-4">
+                    <Button
+                      variant="primary"
+                      onClick={async () => {
+                        try {
+                          // Set loading flag
+                          setPathway({
+                            ...pathway,
+                            loadingSteps: true
+                          });
+                          
+                          // Get AI generated steps
+                          const steps = await studyAbroadService.getPathwaySteps({
+                            country: pathway?.country || formData.preferredCountry,
+                            course: pathway?.course || formData.desiredCourse,
+                            academicLevel: pathway?.academicLevel || formData.academicLevel || "graduate"
+                          });
+                          
+                          // Update pathway with steps
+                          if (pathway.data) {
+                            setPathway({
+                              ...pathway,
+                              data: { ...pathway.data, steps },
+                              loadingSteps: false
+                            });
+                          } else {
+                            setPathway({
+                              ...pathway,
+                              steps,
+                              loadingSteps: false
+                            });
+                          }
+                          
+                          setAlert({
+                            show: true,
+                            message: 'Pathway steps generated successfully!',
+                            variant: 'success'
+                          });
+                        } catch (error) {
+                          console.error('Error generating pathway steps:', error);
+                          setAlert({
+                            show: true,
+                            message: 'Failed to generate pathway steps. Please try again.',
+                            variant: 'danger'
+                          });
+                          setPathway({
+                            ...pathway,
+                            loadingSteps: false
+                          });
+                        }
+                      }}
+                    >
+                      <FaCheckCircle className="me-2" />
+                      Generate Your Personalized Steps
+                    </Button>
+                  </div>
+                )}
+                
+                {pathway?.loadingSteps && (
+                  <div className="text-center py-4">
+                    <Spinner animation="border" role="status" className="mb-2">
+                      <span className="visually-hidden">Loading...</span>
+                    </Spinner>
+                    <p className="text-muted">Creating your personalized pathway steps...</p>
+                  </div>
+                )}
+                
+                {/* Show steps if they exist */}
+                {((pathway?.data?.steps || pathway?.steps || []).length > 0 && !pathway?.loadingSteps) && 
+                 (pathway?.data?.steps || pathway?.steps).map((step, index) => (
                   <Accordion.Item 
                     eventKey={index.toString()} 
                     key={step.step}
@@ -1037,7 +1243,225 @@ const UniGuidePro = () => {
             </Card.Body>
           </Card>
         </motion.div>
-      )}      {/* Step modal and subscription plans */}
+      )}      {/* University Recommendations Section */}
+      <Card className="mb-4 border-0 shadow">
+        <Card.Header className="bg-gradient text-white" style={{ background: 'linear-gradient(45deg, #0062cc 0%, #258cfb 100%)' }}>
+          <h5 className="mb-0 d-flex align-items-center">
+            <FaGraduationCap className="me-2" />
+            Top University Recommendations
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          {/* Loading State for Universities */}
+          {!pathway?.universities && (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status" className="mb-2">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+              <p className="text-muted">Generating university recommendations based on your profile...</p>
+            </div>
+          )}
+          
+          {/* University Cards */}
+          <Row xs={1} md={2} className="g-4">
+            {(pathway?.universities || []).slice(0, planType === 'free' ? 2 : 6).map((uni, index) => (
+              <Col key={index}>
+                <Card className={`h-100 ${planType === 'free' && index >= 1 ? 'bg-light' : ''}`}>
+                  <Card.Body>
+                    <Card.Title className="d-flex justify-content-between align-items-start">
+                      <span>{uni.name}</span>
+                      {planType === 'free' && index >= 1 && (
+                        <Badge bg="warning" className="text-dark">
+                          <FaCrown className="me-1" style={{ fontSize: '0.7em' }} />
+                          Premium
+                        </Badge>
+                      )}
+                    </Card.Title>
+                    <Card.Text as="div">
+                      <p className="mb-1"><strong>Ranking:</strong> {uni.ranking}</p>
+                      <p className="mb-1"><strong>Location:</strong> {uni.location}</p>
+                      <p className="mb-0"><strong>Tuition:</strong> {uni.tuitionFee}</p>
+                      
+                      {planType !== 'free' && uni.requirements && (
+                        <div className="mt-3">
+                          <p className="mb-1 fw-bold border-bottom pb-1">Admission Requirements</p>
+                          <p className="mb-1 small"><strong>GPA:</strong> {uni.requirements.gpa}</p>
+                          <p className="mb-1 small"><strong>IELTS:</strong> {uni.requirements.ielts}</p>
+                          <p className="mb-0 small"><strong>TOEFL:</strong> {uni.requirements.toefl}</p>
+                        </div>
+                      )}
+                    </Card.Text>
+                  </Card.Body>
+                  {planType === 'free' && index >= 1 && (
+                    <Card.Footer className="bg-light text-center">
+                      <Button 
+                        variant="warning" 
+                        size="sm"
+                        className="text-dark w-100"
+                        onClick={() => setShowUpgradeModal(true)}
+                      >
+                        <FaCrown className="me-1" />
+                        Upgrade to See More
+                      </Button>
+                    </Card.Footer>
+                  )}
+                </Card>
+              </Col>
+            ))}
+          </Row>
+          
+          {/* University AI Generation */}
+          {!pathway?.universities && (
+            <div className="text-center mt-4">
+              <Button 
+                variant="primary"
+                onClick={async () => {
+                  try {
+                    const universities = await getUniversityRecommendations(
+                      pathway?.country || formData.preferredCountry,
+                      pathway?.course || formData.desiredCourse
+                    );
+                    
+                    // Update pathway with universities
+                    if (pathway.data) {
+                      setPathway({
+                        ...pathway,
+                        data: { ...pathway.data, universities }
+                      });
+                    } else {
+                      setPathway({
+                        ...pathway,
+                        universities
+                      });
+                    }
+                    
+                    setAlert({
+                      show: true,
+                      message: 'University recommendations generated successfully!',
+                      variant: 'success'
+                    });
+                  } catch (error) {
+                    console.error('Error generating university recommendations:', error);
+                    setAlert({
+                      show: true,
+                      message: 'Failed to generate university recommendations. Please try again.',
+                      variant: 'danger'
+                    });
+                  }
+                }}
+              >
+                <FaGraduationCap className="me-2" />
+                Generate University Recommendations
+              </Button>
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
+      {/* Scholarships Section */}
+      <Card className="mb-4 border-0 shadow">
+        <Card.Header className="bg-gradient text-white" style={{ background: 'linear-gradient(45deg, #198754 0%, #20c997 100%)' }}>
+          <h5 className="mb-0 d-flex align-items-center">
+            <FaMoneyBillWave className="me-2" />
+            Scholarship Opportunities
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          {/* Loading State for Scholarships */}
+          {!pathway?.scholarships && (
+            <div className="text-center py-4">
+              <Spinner animation="border" role="status" className="mb-2">
+                <span className="visually-hidden">Loading...</span>
+              </Spinner>
+              <p className="text-muted">Finding scholarship opportunities for you...</p>
+            </div>
+          )}
+          
+          {/* Scholarship List */}
+          <ListGroup variant="flush">
+            {(pathway?.scholarships || []).slice(0, planType === 'free' ? 1 : 3).map((scholarship, index) => (
+              <ListGroup.Item key={index} className={planType === 'free' && index >= 1 ? 'bg-light' : ''}>
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h5 className="mb-1">
+                      {scholarship.name}
+                      {planType === 'free' && index >= 1 && (
+                        <Badge bg="warning" className="ms-2 text-dark">
+                          <FaCrown className="me-1" style={{ fontSize: '0.7em' }} />
+                          Premium
+                        </Badge>
+                      )}
+                    </h5>
+                    <p className="mb-1"><strong>Amount:</strong> {scholarship.amount}</p>
+                    <p className="mb-1"><strong>Eligibility:</strong> {scholarship.eligibility}</p>
+                    <p className="mb-0"><strong>Deadline:</strong> {scholarship.deadline}</p>
+                  </div>
+                </div>
+              </ListGroup.Item>
+            ))}
+          </ListGroup>
+          
+          {planType === 'free' && (pathway?.scholarships || []).length > 1 && (
+            <div className="mt-3 text-center">
+              <Button 
+                variant="warning" 
+                size="sm"
+                className="text-dark"
+                onClick={() => setShowUpgradeModal(true)}
+              >
+                <FaCrown className="me-1" />
+                Upgrade to See {(pathway.scholarships || []).length - 1} More Scholarships
+              </Button>
+            </div>
+          )}
+          
+          {/* Scholarship AI Generation */}
+          {!pathway?.scholarships && (
+            <div className="text-center mt-4">
+              <Button 
+                variant="success"
+                onClick={async () => {
+                  try {
+                    const scholarships = await getScholarshipOpportunities(
+                      pathway?.country || formData.preferredCountry,
+                      pathway?.course || formData.desiredCourse
+                    );
+                    
+                    // Update pathway with scholarships
+                    if (pathway.data) {
+                      setPathway({
+                        ...pathway,
+                        data: { ...pathway.data, scholarships }
+                      });
+                    } else {
+                      setPathway({
+                        ...pathway,
+                        scholarships
+                      });
+                    }
+                    
+                    setAlert({
+                      show: true,
+                      message: 'Scholarship opportunities found successfully!',
+                      variant: 'success'
+                    });
+                  } catch (error) {
+                    console.error('Error finding scholarship opportunities:', error);
+                    setAlert({
+                      show: true,
+                      message: 'Failed to find scholarship opportunities. Please try again.',
+                      variant: 'danger'
+                    });
+                  }
+                }}
+              >
+                <FaMoneyBillWave className="me-2" />
+                Find Scholarship Opportunities
+              </Button>
+            </div>
+          )}
+        </Card.Body>
+      </Card>
 
       <StepModal />
       

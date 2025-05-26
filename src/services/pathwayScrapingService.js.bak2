@@ -44,8 +44,7 @@ class PathwayScrapingService {
       'Indian', 'Chinese', 'Pakistani', 'Bangladeshi', 'Nigerian', 'Brazilian',
       'Mexican', 'Turkish', 'Egyptian', 'Iranian', 'Vietnamese', 'Indonesian',
       'Malaysian', 'Thai', 'Filipino', 'Sri Lankan', 'Nepalese', 'Afghan'
-    ];
-  }
+    ];  }
 
   /**
    * Generate pathway using Gemini AI
@@ -338,9 +337,8 @@ Provide detailed, actionable recommendations covering all aspects of studying ab
 10. Format as valid JSON without any markdown formatting
 
 Generate this comprehensive pathway now:`;
-      }
 
-      const result = await this.model.generateContent(promptTemplate);
+      const result = await this.model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
       
@@ -359,7 +357,6 @@ Generate this comprehensive pathway now:`;
       throw error;
     }
   }
-
   /**
    * Generate a unique pathway ID based on profile
    */
@@ -521,8 +518,7 @@ Generate this comprehensive pathway now:`;
       return null;
     } catch (error) {
       console.error('Error fetching pathway from database:', error);
-      return null;
-    }
+      return null;    }
   }
   
   /**
@@ -564,7 +560,6 @@ Generate this comprehensive pathway now:`;
     // Default to high range if amount is very high
     return this.budgetRanges[2]; // High range
   }
-
   /**
    * Get scraping statistics
    */
