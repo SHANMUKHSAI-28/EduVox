@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useSubscriptionLimits } from '../../../hooks/useSubscriptionLimits';
-import studyAbroadService from '../../../services/studyAbroadService';
-import SubscriptionStatus from '../../subscription/SubscriptionStatus';
-import SubscriptionPlans from '../../subscription/SubscriptionPlans';
-import Button from '../../common/Button';
-import Alert from '../../common/Alert';
-import LoadingSpinner from '../../common/LoadingSpinner';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
+import studyAbroadService from '../../services/studyAbroadService';
+import SubscriptionStatus from '../subscription/SubscriptionStatus';
+import SubscriptionPlans from '../subscription/SubscriptionPlans';
+import Button from '../common/Button';
+import Alert from '../common/Alert';
+import LoadingSpinner from '../common/LoadingSpinner';
 import { 
   Container, 
   Card, 
@@ -15,9 +15,8 @@ import {
   Col, 
   Badge,
   ProgressBar,
-  Accordion,
   Modal,
-  ListGroup
+  Accordion
 } from 'react-bootstrap';
 import { motion } from 'framer-motion';
 import { 
@@ -30,9 +29,7 @@ import {
   FaCrown,
   FaInfoCircle,
   FaCalendarAlt,
-  FaFlag,
-  FaFileAlt,
-  FaListUl
+  FaFlag
 } from 'react-icons/fa';
 
 const cardTransition = {
@@ -50,7 +47,7 @@ const UniGuidePro = () => {
     limits,
     usage,
     planType,
-    subscriptionLoading 
+    loading: subscriptionLoading 
   } = useSubscriptionLimits();
 
   const [loading, setLoading] = useState(false);
@@ -132,21 +129,18 @@ const UniGuidePro = () => {
 
   const updateStepStatus = async (stepNumber, status) => {
     try {
-      const updatedPathway = {
-        ...pathway,
-        steps: pathway.steps.map(step => 
-          step.step === stepNumber 
-            ? { ...step, status, updatedAt: new Date().toISOString() }
-            : step
-        ),
-        updatedAt: new Date().toISOString()
-      };
+      const updatedSteps = pathway.steps.map(step => 
+        step.step === stepNumber ? { ...step, status } : step
+      );
+      
+      const updatedPathway = { ...pathway, steps: updatedSteps };
+      setPathway(updatedPathway);
       
       await studyAbroadService.saveUserPathway(currentUser.uid, updatedPathway);
-      setPathway(updatedPathway);
+      
       setAlert({
         type: 'success',
-        message: `Step ${stepNumber} status updated to ${status}.`
+        message: `Step ${stepNumber} status updated to ${status}`
       });
     } catch (error) {
       console.error('Error updating step status:', error);
@@ -238,10 +232,7 @@ const UniGuidePro = () => {
       {showForm && (
         <Card className="mb-4 shadow">
           <Card.Header>
-            <h4>
-              <FaFileAlt className="mr-2" />
-              Tell us about your study abroad goals
-            </h4>
+            <h4>Tell us about your study abroad goals</h4>
           </Card.Header>
           <Card.Body>
             <Form onSubmit={handleSubmit}>
@@ -458,7 +449,6 @@ const UniGuidePro = () => {
             </Card.Body>
           </Card>
 
-          {/* Usage Information */}
           {!subscriptionLoading && limits && limits.uniGuideProUsage !== -1 && (
             <Card className="mb-4 border-info">
               <Card.Header className="bg-info text-white">

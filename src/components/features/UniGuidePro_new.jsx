@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useSubscriptionLimits } from '../../../hooks/useSubscriptionLimits';
-import studyAbroadService from '../../../services/studyAbroadService';
-import SubscriptionStatus from '../../subscription/SubscriptionStatus';
-import SubscriptionPlans from '../../subscription/SubscriptionPlans';
-import Button from '../../common/Button';
-import Alert from '../../common/Alert';
-import LoadingSpinner from '../../common/LoadingSpinner';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
+import studyAbroadService from '../../services/studyAbroadService';
+import SubscriptionStatus from '../subscription/SubscriptionStatus';
+import SubscriptionPlans from '../subscription/SubscriptionPlans';
+import Button from '../common/Button';
+import Alert from '../common/Alert';
+import LoadingSpinner from '../common/LoadingSpinner';
 import { 
   Container, 
   Card, 
