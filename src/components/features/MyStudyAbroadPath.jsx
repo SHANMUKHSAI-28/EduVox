@@ -190,15 +190,20 @@ const MyStudyAbroadPath = () => {
     return requiredFields.every(field => {
       const value = profile[field];
       return value && value !== '' && (Array.isArray(value) ? value.length > 0 : true);
-    });
-  };  const generatePersonalizedPath = async (profile = userProfile) => {
-    if (!profile) return;    // Debug logging
+    });  };
+
+  const generatePersonalizedPath = async (profile = userProfile) => {
+    if (!profile) return;    
+    
+    // Debug logging
     console.log('📚 MyStudyAbroadPath generatePersonalizedPath - Debug Info:', {
       limits,
       usage,
       planType,
       canUseMyStudyPath: canUseMyStudyPath
-    });// Check subscription limits for MyStudyPath usage
+    });
+    
+    // Check subscription limits for MyStudyPath usage
     if (!canUseMyStudyPath) {
       console.log('❌ MyStudyPath: Cannot perform action, showing upgrade prompt');
       showUpgradePrompt('useMyStudyPath', () => setShowUpgradeModal(true));
@@ -1056,71 +1061,66 @@ const MyStudyAbroadPath = () => {
                               </li>
                             ))}
                           </ul>
-                          
-                          {/* Step Priority */}
-                          {step.priority && (
-                            <div className="mt-3">
-                              <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
-                                step.priority === 'high' ? 'bg-red-100 text-red-800' :
-                                step.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-green-100 text-green-800'
-                              }`}>
-                                <FaFlag className="w-3 h-3 mr-1" />
-                                {step.priority.charAt(0).toUpperCase() + step.priority.slice(1)} Priority
-                              </span>
-                            </div>
-                          )}
                         </div>
 
-                        {/* Context-Sensitive Information */}
+                        {/* Context-Sensitive Information - Step 1 University Recommendations */}
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
                             <FaInfoCircle className="mr-2 text-blue-500" />
                             Related Information:
                           </h4>
                           
-                          {/* Show relevant visa, cost, or language info based on step content */}
-                          <div className="space-y-3 text-sm">
-                            {step.title.toLowerCase().includes('visa') && pathway.visaRequirements && (
-                              <div className="p-3 bg-blue-50 rounded-lg">
-                                <h6 className="font-medium text-blue-900 mb-2">Visa Requirements:</h6>
-                                <p className="text-blue-800">
-                                  Type: {pathway.visaRequirements.type || 'Student Visa'}<br/>
-                                  Processing Time: {pathway.visaRequirements.processingTime || 'N/A'}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {step.title.toLowerCase().includes('cost') && pathway.costs && (
-                              <div className="p-3 bg-green-50 rounded-lg">
-                                <h6 className="font-medium text-green-900 mb-2">Cost Information:</h6>
-                                <p className="text-green-800">
-                                  Tuition: ${pathway.costs.tuition?.average || 'N/A'}<br/>
-                                  Living: ${pathway.costs.living?.total || 'N/A'}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {step.title.toLowerCase().includes('language') && pathway.languageRequirements && (
-                              <div className="p-3 bg-purple-50 rounded-lg">
-                                <h6 className="font-medium text-purple-900 mb-2">Language Requirements:</h6>
-                                <p className="text-purple-800">
-                                  IELTS: {pathway.languageRequirements.ielts?.overall || 'N/A'}<br/>
-                                  TOEFL: {pathway.languageRequirements.toefl?.overall || 'N/A'}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {!step.title.toLowerCase().includes('visa') && 
-                             !step.title.toLowerCase().includes('cost') && 
-                             !step.title.toLowerCase().includes('language') && (
-                              <div className="p-3 bg-gray-50 rounded-lg">
-                                <p className="text-gray-600">
-                                  Complete this step to progress in your study abroad journey.
-                                </p>
-                              </div>
-                            )}
-                          </div>
+                          {step.step === 1 && pathway.universities && pathway.universities.length > 0 ? (
+                            <div className="p-3 bg-blue-50 rounded-lg">
+                              <h6 className="font-medium text-blue-900 mb-2">Recommended Universities:</h6>
+                              {pathway.universities.map((university, uIndex) => (
+                                <div key={uIndex} className="mb-3 last:mb-0 p-2 bg-white rounded border border-blue-100">
+                                  <div className="font-medium text-gray-900">{university.name}</div>
+                                  <div className="text-sm text-gray-600 mt-1">
+                                    <div>Ranking: {university.ranking}</div>
+                                    <div>Location: {university.location}</div>
+                                    <div>Tuition: {university.tuitionFee}</div>
+                                    {university.specialties && (
+                                      <div className="mt-1 text-xs italic">
+                                        Specialties: {university.specialties.join(", ")}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : 
+                          step.title.toLowerCase().includes('visa') && pathway.visaRequirements ? (
+                            <div className="p-3 bg-blue-50 rounded-lg">
+                              <h6 className="font-medium text-blue-900 mb-2">Visa Requirements:</h6>
+                              <p className="text-blue-800">
+                                Type: {pathway.visaRequirements.type || 'Student Visa'}<br/>
+                                Processing Time: {pathway.visaRequirements.processingTime || 'N/A'}
+                              </p>
+                            </div>
+                          ) : step.title.toLowerCase().includes('cost') && pathway.costs ? (
+                            <div className="p-3 bg-green-50 rounded-lg">
+                              <h6 className="font-medium text-green-900 mb-2">Cost Information:</h6>
+                              <p className="text-green-800">
+                                Tuition: ${pathway.costs.tuition?.average || 'N/A'}<br/>
+                                Living: ${pathway.costs.living?.total || 'N/A'}
+                              </p>
+                            </div>
+                          ) : step.title.toLowerCase().includes('language') && pathway.languageRequirements ? (
+                            <div className="p-3 bg-purple-50 rounded-lg">
+                              <h6 className="font-medium text-purple-900 mb-2">Language Requirements:</h6>
+                              <p className="text-purple-800">
+                                IELTS: {pathway.languageRequirements.ielts?.overall || 'N/A'}<br/>
+                                TOEFL: {pathway.languageRequirements.toefl?.overall || 'N/A'}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-gray-50 rounded-lg">
+                              <p className="text-gray-600">
+                                Complete this step to progress in your study abroad journey.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -1139,56 +1139,7 @@ const MyStudyAbroadPath = () => {
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* University Recommendations Section */}
-          {pathway.universities && pathway.universities.length > 0 && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Recommended Universities</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">University</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ranking</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tuition</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requirements</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {pathway.universities.map((university, index) => (
-                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-4">
-                          <div className="font-medium text-gray-900">{university.name}</div>
-                          {university.specialties && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              <span className="font-semibold">Specialties:</span> {university.specialties.join(", ")}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-500">{university.ranking}</td>
-                        <td className="px-4 py-4 text-sm text-gray-500">{university.location}</td>
-                        <td className="px-4 py-4 text-sm text-gray-500">{university.tuitionFee}</td>
-                        <td className="px-4 py-4 text-xs">
-                          {university.requirements && (
-                            <>
-                              <div><span className="font-semibold">GPA:</span> {university.requirements.gpa}</div>
-                              <div><span className="font-semibold">IELTS:</span> {university.requirements.ielts}</div>
-                              <div><span className="font-semibold">TOEFL:</span> {university.requirements.toefl}</div>
-                              {university.requirements.gre && (
-                                <div><span className="font-semibold">GRE:</span> {university.requirements.gre}</div>
-                              )}
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          </div>          {/* University Recommendations Section moved to Step 1's Detail View */}
 
           {/* Visa Requirements Section */}
           {pathway.visaRequirements && (
