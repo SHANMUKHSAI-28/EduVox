@@ -8,7 +8,7 @@ import SubscriptionPlans from '../subscription/SubscriptionPlans';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { FaUser, FaGraduationCap, FaDollarSign, FaGlobe, FaCalendarAlt, FaCheckCircle, FaClock, FaExclamationTriangle, FaSync, FaBell, FaCrown, FaInfoCircle } from 'react-icons/fa';
+import { FaUser, FaGraduationCap, FaDollarSign, FaGlobe, FaCalendarAlt, FaCheckCircle, FaClock, FaExclamationTriangle, FaSync, FaBell, FaCrown, FaInfoCircle, FaListUl, FaFlag, FaFileAlt } from 'react-icons/fa';
 
 const MyStudyAbroadPath = () => {
   const { currentUser } = useAuth();  const { 
@@ -313,13 +313,23 @@ const MyStudyAbroadPath = () => {
       setGeneratingPath(false);
     }
   };
-
   const updateStepStatus = async (stepIndex, newStatus) => {
     if (!pathway) return;
 
     try {
       const updatedSteps = [...pathway.steps];
-      updatedSteps[stepIndex].status = newStatus;
+      const step = updatedSteps[stepIndex];
+      
+      // Update status
+      step.status = newStatus;
+      
+      // Add completion timestamp if marking as completed
+      if (newStatus === 'completed') {
+        step.completedAt = new Date().toISOString();
+      } else {
+        // Remove completion timestamp if changing from completed
+        delete step.completedAt;
+      }
       
       const updatedPathway = { ...pathway, steps: updatedSteps };
       setPathway(updatedPathway);
@@ -327,9 +337,12 @@ const MyStudyAbroadPath = () => {
       // Save updated pathway
       await studyAbroadService.saveUserPathway(currentUser.uid, updatedPathway);
       
+      const statusText = newStatus === 'completed' ? 'completed' : 
+                        newStatus === 'in-progress' ? 'started' : 'reset to pending';
+      
       setAlert({
         type: 'success',
-        message: 'Step status updated successfully!'
+        message: `Step ${step.step} ${statusText} successfully!`
       });
     } catch (error) {
       console.error('Error updating step status:', error);
@@ -338,7 +351,7 @@ const MyStudyAbroadPath = () => {
         message: 'Failed to update step status.'
       });
     }
-  };  const regeneratePathway = async () => {
+  };const regeneratePathway = async () => {
     if (!userProfile) return;
 
     // Check subscription limits for pathway regeneration
@@ -953,53 +966,174 @@ const MyStudyAbroadPath = () => {
                   className={`border rounded-lg p-6 transition-all duration-200 ${
                     activeStep === index ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                   }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
+                >                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center">
                       <div className="flex items-center mr-4">
                         {getStepStatusIcon(step.status)}
                         <span className="ml-2 text-lg font-bold text-gray-700">
                           Step {step.step}
                         </span>
+                        <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${
+                          step.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          step.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {step.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
                       </div>
-                      <h3 className="text-xl font-semibold text-gray-900">{step.title}</h3>
-                    </div>
-                    <div className="flex space-x-2">
-                      {step.status !== 'completed' && (
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900">{step.title}</h3>
+                        {step.completedAt && (
+                          <p className="text-sm text-green-600 mt-1">
+                            <FaCheckCircle className="inline w-3 h-3 mr-1" />
+                            Completed on {new Date(step.completedAt).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    </div><div className="flex space-x-2">
+                      {/* Enhanced Status Toggle Buttons */}
+                      <div className="flex space-x-1">
                         <Button
-                          onClick={() => updateStepStatus(index, step.status === 'pending' ? 'in-progress' : 'completed')}
-                          className={`px-3 py-1 text-sm ${
+                          onClick={() => updateStepStatus(index, 'pending')}
+                          className={`px-2 py-1 text-xs ${
                             step.status === 'pending' 
-                              ? 'bg-yellow-500 hover:bg-yellow-600' 
-                              : 'bg-green-500 hover:bg-green-600'
+                              ? 'bg-gray-600 text-white' 
+                              : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                           }`}
+                          title="Mark as Pending"
                         >
-                          {step.status === 'pending' ? 'Start' : 'Complete'}
+                          <FaExclamationTriangle className="w-3 h-3" />
                         </Button>
-                      )}
+                        <Button
+                          onClick={() => updateStepStatus(index, 'in-progress')}
+                          className={`px-2 py-1 text-xs ${
+                            step.status === 'in-progress' 
+                              ? 'bg-yellow-600 text-white' 
+                              : 'bg-gray-200 text-gray-600 hover:bg-yellow-200'
+                          }`}
+                          title="Mark as In Progress"
+                        >
+                          <FaClock className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          onClick={() => updateStepStatus(index, 'completed')}
+                          className={`px-2 py-1 text-xs ${
+                            step.status === 'completed' 
+                              ? 'bg-green-600 text-white' 
+                              : 'bg-gray-200 text-gray-600 hover:bg-green-200'
+                          }`}
+                          title="Mark as Completed"
+                        >
+                          <FaCheckCircle className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      
                       <Button
                         onClick={() => setActiveStep(activeStep === index ? null : index)}
-                        className="bg-gray-500 hover:bg-gray-600 px-3 py-1 text-sm"
+                        className="bg-blue-500 hover:bg-blue-600 px-3 py-1 text-sm text-white"
                       >
-                        {activeStep === index ? 'Hide' : 'Details'}
-                      </Button>
+                        {activeStep === index ? 'Hide Details' : 'View Details'}                      </Button>
                     </div>
                   </div>
-
+                  
                   <p className="text-gray-600 mb-2">{step.description}</p>
                   <p className="text-sm text-blue-600 font-medium">Duration: {step.duration}</p>
 
                   {activeStep === index && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
-                      <h4 className="font-semibold text-gray-900 mb-3">Tasks:</h4>
-                      <ul className="space-y-2">
-                        {step.tasks?.map((task, taskIndex) => (
-                          <li key={taskIndex} className="flex items-center text-gray-700">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                            {task}
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Tasks Section */}
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <FaListUl className="mr-2 text-blue-500" />
+                            Tasks to Complete:
+                          </h4>
+                          <ul className="space-y-2">
+                            {step.tasks?.map((task, taskIndex) => (
+                              <li key={taskIndex} className="flex items-start text-gray-700">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2 flex-shrink-0"></div>
+                                <span className="text-sm">{task}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          
+                          {/* Step Priority */}
+                          {step.priority && (
+                            <div className="mt-3">
+                              <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                                step.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                step.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                <FaFlag className="w-3 h-3 mr-1" />
+                                {step.priority.charAt(0).toUpperCase() + step.priority.slice(1)} Priority
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Context-Sensitive Information */}
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                            <FaInfoCircle className="mr-2 text-blue-500" />
+                            Related Information:
+                          </h4>
+                          
+                          {/* Show relevant visa, cost, or language info based on step content */}
+                          <div className="space-y-3 text-sm">
+                            {step.title.toLowerCase().includes('visa') && pathway.visaRequirements && (
+                              <div className="p-3 bg-blue-50 rounded-lg">
+                                <h6 className="font-medium text-blue-900 mb-2">Visa Requirements:</h6>
+                                <p className="text-blue-800">
+                                  Type: {pathway.visaRequirements.type || 'Student Visa'}<br/>
+                                  Processing Time: {pathway.visaRequirements.processingTime || 'N/A'}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {step.title.toLowerCase().includes('cost') && pathway.costs && (
+                              <div className="p-3 bg-green-50 rounded-lg">
+                                <h6 className="font-medium text-green-900 mb-2">Cost Information:</h6>
+                                <p className="text-green-800">
+                                  Tuition: ${pathway.costs.tuition?.average || 'N/A'}<br/>
+                                  Living: ${pathway.costs.living?.total || 'N/A'}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {step.title.toLowerCase().includes('language') && pathway.languageRequirements && (
+                              <div className="p-3 bg-purple-50 rounded-lg">
+                                <h6 className="font-medium text-purple-900 mb-2">Language Requirements:</h6>
+                                <p className="text-purple-800">
+                                  IELTS: {pathway.languageRequirements.ielts?.overall || 'N/A'}<br/>
+                                  TOEFL: {pathway.languageRequirements.toefl?.overall || 'N/A'}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {!step.title.toLowerCase().includes('visa') && 
+                             !step.title.toLowerCase().includes('cost') && 
+                             !step.title.toLowerCase().includes('language') && (
+                              <div className="p-3 bg-gray-50 rounded-lg">
+                                <p className="text-gray-600">
+                                  Complete this step to progress in your study abroad journey.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Documents Section */}
+                      {step.documents && (
+                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                          <h5 className="font-medium text-gray-900 mb-2 flex items-center">
+                            <FaFileAlt className="mr-2 text-green-500" />
+                            Required Documents:
+                          </h5>
+                          <p className="text-sm text-gray-700">{step.documents}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

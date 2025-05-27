@@ -80,8 +80,21 @@ class PathwayScrapingService {
       } else if (profile.stepsOnly) {
         // Optimized prompt for pathway steps only
         promptTemplate = this.getPathwayStepsPrompt(profile);
-      } else {
-        // Full pathway prompt for complete generation
+      } else {        // Full pathway prompt for complete generation
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1; // 0-based month
+        
+        // Calculate appropriate application timeline based on current date
+        let applicationYear = currentYear;
+        let intakeYear = currentYear + 1;
+        
+        // If it's late in the year (Sept-Dec), target next year's intake
+        if (currentMonth >= 9) {
+          applicationYear = currentYear + 1;
+          intakeYear = currentYear + 2;
+        }
+        
         promptTemplate = `
 You are an expert study abroad consultant specializing in MS programs. Create a comprehensive, personalized study abroad pathway for a ${profile.nationality} student.
 
@@ -92,8 +105,14 @@ You are an expert study abroad consultant specializing in MS programs. Create a 
 - Budget Range: $${profile.budgetRange.min} - $${profile.budgetRange.max} USD
 - Nationality: ${profile.nationality}
 
+**CURRENT DATE CONTEXT:**
+- Today's Date: ${currentDate.toDateString()}
+- Current Year: ${currentYear}
+- Target Application Period: ${applicationYear}
+- Target Intake: Fall ${intakeYear} or Spring ${intakeYear + 1}
+
 **INSTRUCTIONS:**
-Provide detailed, actionable recommendations covering all aspects of studying abroad. Be specific with numbers, dates, and requirements. Consider the student's nationality for visa requirements and cultural adaptation.
+Provide detailed, actionable recommendations covering all aspects of studying abroad. Be specific with numbers, dates, and requirements. Consider the student's nationality for visa requirements and cultural adaptation. ALL DATES MUST BE CURRENT AND FUTURE-ORIENTED based on the current date context provided above.
 
 **REQUIRED OUTPUT FORMAT (Valid JSON):**
 {
