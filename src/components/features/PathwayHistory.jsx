@@ -121,14 +121,13 @@ const PathwayHistory = () => {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-secondary-900 mb-2">No Pathway History</h3>
-              <p className="text-secondary-600 mb-6">You haven't generated any study abroad pathways yet.</p>
-              <div className="space-x-4">
+              <p className="text-secondary-600 mb-6">You haven't generated any study abroad pathways yet.</p>              <div className="space-x-4">
                 <Link 
-                  to="/my-study-path"
+                  to="/uniguidepro"
                   className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
                 >
                   Create Your Study Path
-                </Link>                <Link 
+                </Link><Link 
                   to="/uniguidepro"
                   className="inline-flex items-center px-4 py-2 border border-secondary-300 text-secondary-700 rounded-lg hover:bg-secondary-50 transition-colors duration-200"
                 >
@@ -238,10 +237,9 @@ const PathwayHistory = () => {
                           : 'In Progress'
                         }
                       </span>
-                    </div>
-                    <div className="flex items-center space-x-3">
+                    </div>                    <div className="flex items-center space-x-3">
                       <Link
-                        to={`/my-study-path?pathwayId=${pathway.id}`}
+                        to={`/uniguidepro?pathwayId=${pathway.id}`}
                         className="text-primary-600 hover:text-primary-700 text-sm font-medium transition-colors duration-200"
                       >
                         View Details

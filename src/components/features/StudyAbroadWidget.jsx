@@ -106,9 +106,8 @@ const StudyAbroadWidget = () => {
           <p className="text-gray-600 mb-4">
             Create your personalized pathway or explore general roadmaps
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => canCreatePathway ? navigate('/my-study-path') : navigate('/profile?tab=subscription')}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">            <button
+              onClick={() => canCreatePathway ? navigate('/uniguidepro') : navigate('/profile?tab=subscription')}
               disabled={!canCreatePathway && planType === 'free'}
               className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
                 canCreatePathway 
@@ -117,7 +116,7 @@ const StudyAbroadWidget = () => {
               }`}
             >
               {canCreatePathway ? <FaArrowRight className="mr-2" /> : <FaCrown className="mr-2" />}
-              {canCreatePathway ? 'My Study Path' : 'Upgrade to Create Path'}
+              {canCreatePathway ? 'UniGuidePro' : 'Upgrade to Create Path'}
             </button><button
               onClick={() => navigate('/uniguidepro')}
               className="inline-flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 text-sm font-medium rounded-md hover:bg-blue-50 transition-colors duration-200"
@@ -218,19 +217,18 @@ const StudyAbroadWidget = () => {
               </div>
             </div>
           </div>
-        )}        {/* Quick Actions */}
-        <div className="mt-4 flex gap-2">
+        )}        {/* Quick Actions */}        <div className="mt-4 flex gap-2">
           <button
-            onClick={() => navigate('/my-study-path')}
+            onClick={() => navigate('/uniguidepro')}
             className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200"
           >
-            My Study Path
+            UniGuidePro
           </button>          <button
             onClick={() => navigate('/uniguidepro')}
             className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors duration-200"
           >
-            General UniGuidePro
-          </button>        </div>
+            General Pathways
+          </button></div>
 
         {/* Subscription Status - New Component */}
         <SubscriptionStatus />

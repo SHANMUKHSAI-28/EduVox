@@ -3,8 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useSubscriptionLimits } from '../../hooks/useSubscriptionLimits';
 import { academicProfileService } from '../../services/universityService';
 import studyAbroadService from '../../services/studyAbroadService';
-import pathwayScrapingService from '../../services/pathwayScrapingService';
-import { generateProfileHash } from '../../utils/pathwayUpdateDetector';
+import { generateProfileHash, shouldUpdatePathway } from '../../utils/pathwayUpdateDetector';
 import SubscriptionStatus from '../subscription/SubscriptionStatus';
 import SubscriptionPlans from '../subscription/SubscriptionPlans';
 import Button from '../common/Button';
@@ -112,7 +111,7 @@ const UniGuidePro = () => {
     return canPerformAction('useMyStudyPath');
   }, [canPerformAction, planType, subscriptionLoading]);
 
-  // Enhanced effect to load user profile and pathway on mount
+  const profileHashKey = `profile-hash-${currentUser?.uid}`;  // Enhanced effect to load user profile and pathway on mount
   useEffect(() => {
     if (currentUser && !subscriptionLoading && !userProfile) {
       loadUserProfile();
@@ -214,9 +213,7 @@ const UniGuidePro = () => {
         message: 'Failed to load pathway. Please try again.'
       });
     }
-  };
-
-  // Generate pathway from user profile
+  };  // Generate pathway from user profile
   const generatePathwayFromProfile = async (profile) => {
     if (!canUseUniGuidePro) {
       showUpgradePrompt('useUniGuidePro', () => setShowUpgradeModal(true));
@@ -281,6 +278,9 @@ const UniGuidePro = () => {
     try {
       await trackUsage('useMyStudyPath');
 
+      // Import PathwayScrapingService for AI generation
+      const pathwayScrapingService = (await import('../../services/pathwayScrapingService.js')).default;
+      
       // Create detailed profile for AI analysis
       const detailedProfile = {
         country: selectedPathway.country || profile.preferred_countries?.[0] || 'USA',
@@ -293,7 +293,9 @@ const UniGuidePro = () => {
           min: profile.budget_min || 25000,
           max: profile.budget_max || 75000
         }
-      };      // Generate comprehensive pathway using AI
+      };
+
+      // Generate comprehensive pathway using AI
       const detailedPathwayData = await pathwayScrapingService.generatePathwayWithAI(detailedProfile);
       
       if (detailedPathwayData) {
@@ -367,7 +369,6 @@ const UniGuidePro = () => {
       console.error('Error loading user pathways:', error);
     }
   };
-
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
@@ -378,8 +379,17 @@ const UniGuidePro = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Debug logging
+    console.log('🎓 UniGuidePro handleSubmit - Debug Info:', {
+      limits,
+      usage,
+      planType,
+      subscriptionLoading
+    });
+    
     // Wait for subscription data to load
     if (subscriptionLoading) {
+      console.log('⏳ UniGuidePro: Subscription data still loading, please wait...');
       setAlert({
         type: 'info',
         message: 'Loading your subscription details, please wait...'
@@ -389,6 +399,7 @@ const UniGuidePro = () => {
     
     // Check if the user can use UniGuidePro
     if (!canUseUniGuidePro) {
+      console.log('⚠️ UniGuidePro: Usage limit reached');
       setAlert({
         type: 'warning',
         message: 'You have reached your usage limit for UniGuidePro. Upgrade to Premium or Pro for more access.'
@@ -397,6 +408,7 @@ const UniGuidePro = () => {
       return;
     }
     
+    console.log('✅ UniGuidePro: Proceeding with generation...');
     setGeneratingPath(true);
 
     try {
@@ -463,16 +475,88 @@ const UniGuidePro = () => {
   const getStepIcon = (status) => {
     switch (status) {
       case 'completed':
-        return <FaCheckCircle className="text-success" />;
+        return <FaCheckCircle className="text-green-500" />;
       case 'in-progress':
-        return <FaClock className="text-warning" />;
+        return <FaClock className="text-yellow-500" />;
       case 'pending':
       default:
-        return <FaExclamationTriangle className="text-secondary" />;
+        return <FaExclamationTriangle className="text-gray-400" />;
     }
   };
 
   // Calculate progress percentage
+  const calculateProgress = () => {
+    if (!pathway?.steps || pathway.steps.length === 0) return 0;
+    const completedSteps = pathway.steps.filter(step => step.status === 'completed').length;
+    return Math.round((completedSteps / pathway.steps.length) * 100);
+  };
+
+  // Generate detailed analysis for existing pathway
+  const generateDetailedAnalysisForPathway = async () => {
+    if (!canUseDetailedAnalysis) {
+      showUpgradePrompt('useMyStudyPath', () => setShowUpgradeModal(true));
+      return;
+    }
+
+    if (!pathway || !userProfile) {
+      setAlert({
+        type: 'error',
+        message: 'No pathway or profile found. Please generate a pathway first.'
+      });
+      return;
+    }
+
+    await generateDetailedAnalysis(pathway, userProfile);
+  };
+      await studyAbroadService.updateStepStatus(
+        currentUser.uid,
+        pathway.id,
+        stepNumber,
+        status,
+        notes
+      );
+      
+      // Update local state - handle both old and new pathway data structures
+      const currentSteps = pathway.data?.steps || pathway.steps || [];
+      const updatedSteps = currentSteps.map(step => {
+        if (step.step === stepNumber) {
+          return {
+            ...step,
+            status,
+            completedAt: status === 'completed' ? new Date().toISOString() : null,
+            notes
+          };
+        }
+        return step;
+      });
+
+      // Update pathway with appropriate structure
+      if (pathway.data) {
+        setPathway({
+          ...pathway,
+          data: { ...pathway.data, steps: updatedSteps }
+        });
+      } else {
+        setPathway({
+          ...pathway,
+          steps: updatedSteps
+        });
+      }
+
+      setAlert({
+        show: true,
+        message: `Step ${stepNumber} status updated successfully!`,
+        variant: 'success'
+      });
+    } catch (error) {
+      console.error('Error updating step status:', error);
+      setAlert({
+        show: true,
+        message: 'Failed to update step status.',
+        variant: 'danger'
+      });
+    }
+  };
   const getProgressPercentage = () => {
     if (!pathway) return 0;
     
@@ -493,25 +577,78 @@ const UniGuidePro = () => {
     }
   };
 
-  // Generate detailed analysis for existing pathway
-  const generateDetailedAnalysisForPathway = async () => {
-    if (!canUseDetailedAnalysis) {
-      showUpgradePrompt('useMyStudyPath', () => setShowUpgradeModal(true));
-      return;
+  const getStepIcon = (status) => {
+    switch (status) {
+      case 'completed': return <FaCheckCircle className="text-success" />;
+      case 'in-progress': return <FaClock className="text-warning" />;
+      case 'pending': return <FaExclamationTriangle className="text-secondary" />;
+      default: return <FaClock className="text-secondary" />;
     }
-
-    if (!pathway || !userProfile) {
-      setAlert({
-        type: 'error',
-        message: 'No pathway or profile found. Please generate a pathway first.'
-      });
-      return;
-    }
-
-    await generateDetailedAnalysis(pathway, userProfile);
   };
 
-  // Enhanced loading component
+  const StepModal = () => (
+    <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title>
+          Step {selectedStep?.step}: {selectedStep?.title}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {selectedStep && (
+          <>
+            <p><strong>Description:</strong> {selectedStep.description}</p>
+            <p><strong>Duration:</strong> {selectedStep.duration}</p>
+            <p><strong>Status:</strong> 
+              <Badge variant={getStepVariant(selectedStep.status)} className="ml-2">
+                {selectedStep.status}
+              </Badge>
+            </p>
+            
+            <h6>Tasks:</h6>
+            <ListGroup>
+              {selectedStep.tasks.map((task, index) => (
+                <ListGroup.Item key={index}>{task}</ListGroup.Item>
+              ))}
+            </ListGroup>
+
+            {selectedStep.notes && (
+              <div className="mt-3">
+                <h6>Notes:</h6>
+                <p>{selectedStep.notes}</p>
+              </div>
+            )}
+
+            <div className="mt-4">
+              <h6>Update Status:</h6>
+              <div className="d-flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => updateStepStatus(selectedStep.step, 'pending')}
+                >
+                  Mark Pending
+                </Button>
+                <Button
+                  variant="warning"
+                  size="sm"
+                  onClick={() => updateStepStatus(selectedStep.step, 'in-progress')}
+                >
+                  Mark In Progress
+                </Button>
+                <Button
+                  variant="success"
+                  size="sm"
+                  onClick={() => updateStepStatus(selectedStep.step, 'completed')}
+                >
+                  Mark Completed
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </Modal.Body>
+    </Modal>
+  );  // Enhanced loading component
   if (loading || generatingPath) {
     return (
       <Container className="mt-4 text-center py-5">
@@ -640,58 +777,6 @@ const UniGuidePro = () => {
       </Modal.Body>
     </Modal>
   );
-
-  return (
-    <Container className="mt-4">
-      {alert && (
-        <Alert 
-          type={alert.type} 
-          message={alert.message} 
-          onClose={() => setAlert(null)}
-          className="mb-4"
-        />
-      )}
-
-      <SubscriptionStatus />
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={cardTransition}>
-        <Card className="mb-4 shadow-lg border-0">
-          <Card.Header className="bg-gradient-primary text-white">
-            <Row className="align-items-center">
-              <Col>
-                <h2 className="mb-0 d-flex align-items-center">
-                  <FaGlobeAmericas className="mr-3" />
-                  UniGuidePro - AI Study Abroad Assistant
-                </h2>
-                <p className="mb-0 mt-2 opacity-90">
-                  Get personalized study abroad roadmaps with AI-powered guidance
-                </p>
-              </Col>
-              <Col xs="auto">
-                <Badge variant="light" className="px-3 py-2">
-                  <FaCrown className="mr-1" />
-                  Premium Feature
-                </Badge>
-              </Col>
-            </Row>
-          </Card.Header>
-        </Card>
-      </motion.div>
-
-      {showForm && (
-        <Card className="mb-4 shadow">
-          <Card.Header>
-            <h4>
-              <FaUser className="mr-2" />
-              Tell us about your study abroad goals
-            </h4>
-          </Card.Header>
-          <Card.Body>
-            <Form onSubmit={handleSubmit}>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Preferred Country</Form.Label>
                     <Form.Select
                       name="preferredCountry"
                       value={formData.preferredCountry}
@@ -813,9 +898,7 @@ const UniGuidePro = () => {
                     />
                   </Form.Group>
                 </Col>
-              </Row>
-
-              <div className="text-center">
+              </Row>              <div className="text-center">
                 <Button 
                   type="submit" 
                   variant="primary" 
@@ -859,8 +942,7 @@ const UniGuidePro = () => {
                   <ProgressBar 
                     now={getProgressPercentage()} 
                     label={`${Math.round(getProgressPercentage())}%`}
-                    className="mb-3"
-                  />
+                    className="mb-3"                  />
                   <p><strong>Course:</strong> {pathway.course}</p>
                   <p><strong>Academic Level:</strong> {pathway.academicLevel}</p>
                   <p><strong>Estimated Timeline:</strong> {
@@ -868,9 +950,7 @@ const UniGuidePro = () => {
                     pathway.timeline?.totalDuration || 
                     'Not specified'
                   }</p>
-                </Col>
-                <Col md={4}>
-                  <h6>Quick Stats</h6>
+                </Col>                <Col md={4}>                  <h6>Quick Stats</h6>
                   <p><strong>Total Steps:</strong> {(pathway.data?.steps || pathway.steps || []).length}</p>
                   <p><strong>Completed:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'completed').length}</p>
                   <p><strong>In Progress:</strong> {(pathway.data?.steps || pathway.steps || []).filter(s => s.status === 'in-progress').length}</p>
@@ -884,8 +964,7 @@ const UniGuidePro = () => {
           <Card className="mb-4">
             <Card.Header>
               <h5>Step-by-Step Roadmap</h5>
-            </Card.Header>
-            <Card.Body>
+            </Card.Header>            <Card.Body>
               <Accordion defaultActiveKey="0">
                 {(pathway.data?.steps || pathway.steps || []).map((step, index) => (
                   <Accordion.Item eventKey={index.toString()} key={step.step}>
@@ -918,8 +997,7 @@ const UniGuidePro = () => {
                         >
                           View Details & Update Status
                         </Button>
-                      </div>
-                    </Accordion.Body>
+                      </div>                    </Accordion.Body>
                   </Accordion.Item>
                 ))}
               </Accordion>
@@ -935,8 +1013,7 @@ const UniGuidePro = () => {
                     <FaMoneyBillWave className="mr-2" />
                     Cost Breakdown
                   </h5>
-                </Card.Header>
-                <Card.Body>
+                </Card.Header>                <Card.Body>
                   {/* Handle both old and new pathway data structures for costs */}
                   {(() => {
                     const costs = pathway.data?.costs || pathway.costs;
@@ -979,8 +1056,7 @@ const UniGuidePro = () => {
               <Card className="mb-4">
                 <Card.Header>
                   <h5>Visa Information</h5>
-                </Card.Header>
-                <Card.Body>
+                </Card.Header>                <Card.Body>
                   {/* Handle both old and new pathway data structures for visa */}
                   {(() => {
                     const visaInfo = pathway.data?.visaRequirements || pathway.visaInfo || pathway.visa;
@@ -1008,8 +1084,7 @@ const UniGuidePro = () => {
               <Card className="mb-4">
                 <Card.Header>
                   <h5>Recommended Universities</h5>
-                </Card.Header>
-                <Card.Body>
+                </Card.Header>                <Card.Body>
                   {/* Handle both old and new pathway data structures for universities */}
                   {(() => {
                     const universities = pathway.data?.universities || pathway.universities || [];
@@ -1039,8 +1114,7 @@ const UniGuidePro = () => {
               <Card className="mb-4">
                 <Card.Header>
                   <h5>Scholarship Opportunities</h5>
-                </Card.Header>
-                <Card.Body>
+                </Card.Header>                <Card.Body>
                   {/* Handle both old and new pathway data structures for scholarships */}
                   {(() => {
                     const scholarships = pathway.data?.scholarships || pathway.scholarships || [];
@@ -1072,8 +1146,7 @@ const UniGuidePro = () => {
           <Card className="mb-4">
             <Card.Header>
               <h5>Country-Specific Tips for {pathway.country}</h5>
-            </Card.Header>
-            <Card.Body>
+            </Card.Header>            <Card.Body>
               <ul>
                 {/* Handle both old and new pathway data structures for tips */}
                 {(() => {
@@ -1085,12 +1158,9 @@ const UniGuidePro = () => {
                   return tips.map((tip, index) => (
                     <li key={index}>{tip}</li>
                   ));
-                })()}
-              </ul>
+                })()}              </ul>
             </Card.Body>
-          </Card>
-
-          {/* Usage Information */}
+          </Card>          {/* Usage Information */}
           {!subscriptionLoading && limits && limits.uniGuideProUsage !== -1 && (
             <Card className="mb-4 border-info">
               <Card.Header className="bg-info text-white">
@@ -1147,8 +1217,7 @@ const UniGuidePro = () => {
                     step-by-step plan tailored specifically for your goals.
                   </p>
                 </Col>
-                <Col md={4} className="text-center">
-                  <Button
+                <Col md={4} className="text-center">                  <Button
                     size="lg"
                     className="btn-gradient px-4 py-2"
                     style={{
@@ -1156,10 +1225,43 @@ const UniGuidePro = () => {
                       border: 'none',
                       color: 'white'
                     }}
-                    onClick={generateDetailedAnalysisForPathway}
+                    onClick={async () => {
+                      if (!canPerformAction('useMyStudyPath')) {
+                        setAlert({
+                          show: true,
+                          message: 'Upgrade to Premium to access detailed AI-powered analysis!',
+                          variant: 'warning'
+                        });
+                        setShowUpgradeModal(true);
+                        return;
+                      }
+                      
+                      try {
+                        // Save the current pathway for detailed analysis
+                        await studyAbroadService.saveSelectedPathway(currentUser.uid, pathway);
+                        
+                        setAlert({
+                          show: true,
+                          message: 'Pathway selected! Redirecting to detailed AI analysis...',
+                          variant: 'success'
+                        });
+                        
+                        // Navigate to detailed analysis after a short delay
+                        setTimeout(() => {
+                          window.location.href = '/my-study-abroad-path';
+                        }, 1500);
+                      } catch (error) {
+                        console.error('Error saving selected pathway:', error);
+                        setAlert({
+                          show: true,
+                          message: 'Failed to save pathway. Please try again.',
+                          variant: 'danger'
+                        });
+                      }
+                    }}
                   >
                     <FaCrown className="mr-2" />
-                    Get Detailed Analysis
+                    Select for Detailed Analysis
                   </Button>
                   <div className="mt-2">
                     <Badge variant="warning" className="px-3 py-1">
@@ -1171,99 +1273,10 @@ const UniGuidePro = () => {
             </Card.Body>
           </Card>
         </div>
-      )}      {/* Step Details Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title className="d-flex align-items-center">
-            {selectedStep && getStepIcon(selectedStep.status)}
-            <span className="ml-2">
-              Step {selectedStep?.step}: {selectedStep?.title}
-            </span>
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedStep && (
-            <>
-              <div className="mb-3">
-                <h6><FaInfoCircle className="mr-2" />Description:</h6>
-                <p>{selectedStep.description}</p>
-              </div>
-
-              <div className="mb-3">
-                <h6><FaCalendarAlt className="mr-2" />Duration:</h6>
-                <p>{selectedStep.duration}</p>
-              </div>
-
-              <div className="mb-3">
-                <h6><FaFlag className="mr-2" />Status:</h6>
-                <Badge variant={getStepVariant(selectedStep.status)}>
-                  {selectedStep.status}
-                </Badge>
-              </div>
-
-              {selectedStep.tasks && selectedStep.tasks.length > 0 && (
-                <div className="mb-3">
-                  <h6><FaListUl className="mr-2" />Tasks:</h6>
-                  <ListGroup variant="flush">
-                    {selectedStep.tasks.map((task, index) => (
-                      <ListGroup.Item key={index} className="border-0 px-0">
-                        <FaCheckCircle className="text-muted mr-2" size="sm" />
-                        {task}
-                      </ListGroup.Item>
-                    ))}
-                  </ListGroup>
-                </div>
-              )}
-
-              {selectedStep.documents && (
-                <div className="mb-3">
-                  <h6><FaFileAlt className="mr-2" />Required Documents:</h6>
-                  <p className="text-muted">{selectedStep.documents}</p>
-                </div>
-              )}
-
-              {selectedStep.notes && (
-                <div className="mb-3">
-                  <h6><FaBell className="mr-2" />Notes:</h6>
-                  <p className="text-muted">{selectedStep.notes}</p>
-                </div>
-              )}
-
-              <div className="mt-4">
-                <h6>Update Status:</h6>
-                <div className="d-flex gap-2 flex-wrap">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => updateStepStatus(selectedStep.step, 'pending')}
-                    disabled={selectedStep.status === 'pending'}
-                  >
-                    Mark Pending
-                  </Button>
-                  <Button
-                    variant="warning"
-                    size="sm"
-                    onClick={() => updateStepStatus(selectedStep.step, 'in-progress')}
-                    disabled={selectedStep.status === 'in-progress'}
-                  >
-                    Mark In Progress
-                  </Button>
-                  <Button
-                    variant="success"
-                    size="sm"
-                    onClick={() => updateStepStatus(selectedStep.step, 'completed')}
-                    disabled={selectedStep.status === 'completed'}
-                  >
-                    Mark Completed
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </Modal.Body>
-      </Modal>
+      )}
+      <StepModal />
       
-      {/* Subscription Plans Modal */}
+      {/* Keep Subscription Plans Modal but only used for MyStudyPath access */}
       {showUpgradeModal && (
         <SubscriptionPlans onClose={() => setShowUpgradeModal(false)} />
       )}

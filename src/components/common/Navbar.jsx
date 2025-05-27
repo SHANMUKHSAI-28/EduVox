@@ -82,9 +82,8 @@ const Navbar = () => {
                   <div className={`absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 transition-all duration-200 z-50 ${
                     isStudyAbroadOpen ? 'opacity-100 visible transform translate-y-0' : 'opacity-0 invisible transform -translate-y-2'
                   }`}>
-                    <div className="py-1">
-                      <Link
-                        to="/my-study-path"
+                    <div className="py-1">                      <Link
+                        to="/uniguidepro"
                         className="block px-4 py-2 text-sm text-secondary-700 hover:bg-primary-50 hover:text-primary-600 transition-colors duration-200"
                         onClick={() => setIsStudyAbroadOpen(false)}
                       >
@@ -92,7 +91,7 @@ const Navbar = () => {
                           <svg className="w-4 h-4 mr-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
-                          My Study Path
+                          UniGuidePro
                         </div>
                         <div className="text-xs text-secondary-500 ml-7">Personalized pathway</div>
                       </Link>

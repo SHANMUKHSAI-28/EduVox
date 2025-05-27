@@ -290,12 +290,10 @@ class StudyAbroadService {
   async generatePathwaySteps(userProfile) {
     const { academicLevel, preferredCountry, englishProficiency } = userProfile;
     
-    // Calculate timeline backwards from target date
-    const targetDate = new Date(2025, 4, 27); // May is month 4 (0-based)
-    
-    const calculateMonthsFromTarget = (monthsBeforeTarget) => {
-      const date = new Date(targetDate);
-      date.setMonth(date.getMonth() - monthsBeforeTarget);
+    // Calculate timeline based on pathway creation date
+    const formatDate = (monthsFromStart) => {
+      const date = new Date(userProfile.pathway?.createdAt || new Date());
+      date.setMonth(date.getMonth() + monthsFromStart);
       return `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
     };
     
@@ -304,7 +302,7 @@ class StudyAbroadService {
         step: 1,
         title: "Academic Preparation",
         description: "Improve academic credentials and GPA",
-        duration: calculateMonthsFromTarget(17) + " - " + calculateMonthsFromTarget(15),
+        duration: formatDate(0) + " - " + formatDate(2),
         tasks: [
           "Maintain/improve current GPA",
           "Complete prerequisite courses",
@@ -316,7 +314,7 @@ class StudyAbroadService {
         step: 2,
         title: "Language Proficiency",
         description: "Achieve required English proficiency scores",
-        duration: calculateMonthsFromTarget(15) + " - " + calculateMonthsFromTarget(12),
+        duration: formatDate(2) + " - " + formatDate(5),
         tasks: this.getLanguageRequirements(preferredCountry, englishProficiency),
         status: "pending"
       },
@@ -324,7 +322,7 @@ class StudyAbroadService {
         step: 3,
         title: "Standardized Tests",
         description: "Prepare and take required standardized tests",
-        duration: calculateMonthsFromTarget(12) + " - " + calculateMonthsFromTarget(9),
+        duration: formatDate(3) + " - " + formatDate(6),
         tasks: this.getStandardizedTestRequirements(academicLevel, preferredCountry),
         status: "pending"
       },
@@ -332,7 +330,7 @@ class StudyAbroadService {
         step: 4,
         title: "University Research",
         description: "Research and shortlist universities",
-        duration: calculateMonthsFromTarget(9) + " - " + calculateMonthsFromTarget(7),
+        duration: formatDate(6) + " - " + formatDate(8),
         tasks: [
           "Research university rankings and programs",
           "Check admission requirements",
@@ -345,7 +343,7 @@ class StudyAbroadService {
         step: 5,
         title: "Application Preparation",
         description: "Prepare application materials",
-        duration: calculateMonthsFromTarget(7) + " - " + calculateMonthsFromTarget(5),
+        duration: formatDate(8) + " - " + formatDate(11),
         tasks: [
           "Write statement of purpose",
           "Prepare resume/CV",
@@ -358,7 +356,7 @@ class StudyAbroadService {
         step: 6,
         title: "Financial Planning",
         description: "Arrange funding and financial documents",
-        duration: calculateMonthsFromTarget(6) + " - " + calculateMonthsFromTarget(4),
+        duration: formatDate(9) + " - " + formatDate(12),
         tasks: [
           "Apply for scholarships",
           "Arrange education loans",
@@ -371,7 +369,7 @@ class StudyAbroadService {
         step: 7,
         title: "Application Submission",
         description: "Submit university applications",
-        duration: calculateMonthsFromTarget(4) + " - " + calculateMonthsFromTarget(3),
+        duration: formatDate(11) + " - " + formatDate(13),
         tasks: [
           "Complete online applications",
           "Submit required documents",
@@ -384,7 +382,7 @@ class StudyAbroadService {
         step: 8,
         title: "Visa Preparation",
         description: "Prepare for student visa application",
-        duration: calculateMonthsFromTarget(3) + " - " + calculateMonthsFromTarget(2),
+        duration: formatDate(13) + " - " + formatDate(15),
         tasks: await this.getVisaPreparationTasks(preferredCountry),
         status: "pending"
       },
@@ -392,7 +390,7 @@ class StudyAbroadService {
         step: 9,
         title: "Pre-Departure",
         description: "Final preparations before departure",
-        duration: calculateMonthsFromTarget(2) + " - " + calculateMonthsFromTarget(0),
+        duration: formatDate(15) + " - " + formatDate(17),
         tasks: [
           "Book accommodation",
           "Arrange airport pickup",
@@ -2055,21 +2053,19 @@ class StudyAbroadService {
 
   /**
    * Admin: Search pathways by criteria
-   */
-  async searchPathways(searchCriteria) {
+   */  async searchPathways(searchCriteria) {
     try {
       const { country, course, academicLevel, type = 'template' } = searchCriteria;
       
-      let q = query(collection(db, type === 'template' ? this.pathwaysCollection : this.userPathwaysCollection));
+      let finalQuery = query(collection(db, type === 'template' ? this.pathwaysCollection : this.userPathwaysCollection));
       
-      if (country) {
-        q = query(q, where('country', '==', country));
+      if (country) {        finalQuery = query(finalQuery, where('country', '==', country));
       }
       if (course) {
-        q = query(q, where('course', '==', course));
+        finalQuery = query(finalQuery, where('course', '==', course));
       }
       if (academicLevel) {
-        q = query(q, where('academicLevel', '==', academicLevel));
+        finalQuery = query(finalQuery, where('academicLevel', '==', academicLevel));
       }
 
       const querySnapshot = await getDocs(q);

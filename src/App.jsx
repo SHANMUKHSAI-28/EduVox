@@ -15,7 +15,6 @@ import Universities from './pages/Universities';
 import ShortlistedUniversities from './pages/ShortlistedUniversities';
 import AdminPanel from './pages/AdminPanel';
 import UniGuidePro from './components/features/UniGuidePro';
-import MyStudyAbroadPath from './components/features/MyStudyAbroadPath';
 import PathwayHistory from './components/features/PathwayHistory';
 
 function AppContent() {
@@ -88,8 +87,7 @@ function AppContent() {
               <ShortlistedUniversities />
             </ProtectedRoute>
           } 
-        />
-        <Route 
+        />        <Route 
           path="/uniguidepro" 
           element={
             <ProtectedRoute>
@@ -98,34 +96,17 @@ function AppContent() {
           } 
         />
         <Route 
-          path="/my-study-path" 
-          element={
-            <ProtectedRoute>
-              <MyStudyAbroadPath />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
           path="/pathway-history" 
           element={
             <ProtectedRoute>
               <PathwayHistory />
             </ProtectedRoute>
           } 
-        />
-        <Route 
+        />        <Route 
           path="/admin" 
           element={
             <ProtectedRoute>
               <AdminPanel />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/pathway-history" 
-          element={
-            <ProtectedRoute>
-              <PathwayHistory />
             </ProtectedRoute>
           } 
         />
