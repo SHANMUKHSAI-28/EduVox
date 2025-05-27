@@ -2351,7 +2351,6 @@ class StudyAbroadService {
       throw error;
     }
   }
-
   /**
    * Get selected pathway from UniGuidePro
    * @param {string} userId - User ID
@@ -2367,8 +2366,14 @@ class StudyAbroadService {
       }
       return null;
     } catch (error) {
-      console.error('Error getting selected pathway:', error);
-      return null;
+      // Enhanced error handling for Firebase permissions
+      if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
+        console.log('📋 No access to selected pathways collection (expected for most users) - returning null');
+        return null;
+      } else {
+        console.error('Error getting selected pathway:', error);
+        return null;
+      }
     }
   }
 

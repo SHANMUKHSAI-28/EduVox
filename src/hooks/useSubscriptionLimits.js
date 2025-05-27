@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import subscriptionService from '../services/subscriptionService';
 
@@ -6,26 +6,29 @@ export const useSubscriptionLimits = () => {
   const { currentUser, subscriptionData } = useAuth();
   const [limits, setLimits] = useState(null);
   const [usage, setUsage] = useState(null);
-  const [loading, setLoading] = useState(true);  useEffect(() => {
-    const planType = subscriptionData?.planType || 'free';
-    
+  const [loading, setLoading] = useState(true);
+
+  // Memoize critical values to prevent unnecessary re-renders
+  const planType = useMemo(() => subscriptionData?.planType || 'free', [subscriptionData?.planType]);
+  const subscriptionLimits = useMemo(() => subscriptionData?.limits, [subscriptionData?.limits]);
+  const subscriptionUsage = useMemo(() => subscriptionData?.usage, [subscriptionData?.usage]);  useEffect(() => {
     console.log('📊 Subscription data updated:', {
-      subscriptionData,
       planType,
-      hasUsage: !!subscriptionData?.usage,
-      hasLimits: !!subscriptionData?.limits
+      hasUsage: !!subscriptionUsage,
+      hasLimits: !!subscriptionLimits
     });
 
     // Use limits from subscription service if available, otherwise use defaults
     let currentLimits;
     
-    if (subscriptionData?.limits) {
+    if (subscriptionLimits) {
       // Use limits from subscription service (which come from subscriptionTiers)
-      currentLimits = subscriptionData.limits;
+      currentLimits = subscriptionLimits;
       console.log('✅ Using limits from subscription service:', currentLimits);
     } else {
       // Fallback to hardcoded limits if subscription service doesn't provide them
-      console.log('⚠️ No limits in subscription data, using fallback limits');      const fallbackPlanLimits = {
+      console.log('⚠️ No limits in subscription data, using fallback limits');
+      const fallbackPlanLimits = {
         free: {
           pathwaysPerMonth: 1,
           uniGuideProUsage: 5, // Free users get 5 uses
@@ -54,11 +57,10 @@ export const useSubscriptionLimits = () => {
           analytics: true
         }
       };
-      currentLimits = fallbackPlanLimits[planType];
-    }
+      currentLimits = fallbackPlanLimits[planType];    }
     
     // Ensure all usage fields are properly initialized with defaults
-    const baseUsage = subscriptionData?.usage || {};
+    const baseUsage = subscriptionUsage || {};
     const currentUsage = {
       pathwaysGenerated: baseUsage.pathwaysGenerated || 0,
       uniGuideProUsage: baseUsage.uniGuideProUsage || 0,
@@ -71,58 +73,25 @@ export const useSubscriptionLimits = () => {
       planType,
       currentLimits,
       currentUsage,
-      source: subscriptionData?.limits ? 'subscription-service' : 'fallback'
+      source: subscriptionLimits ? 'subscription-service' : 'fallback'
     });
     
     setLimits(currentLimits);
     setUsage(currentUsage);
-    setLoading(false);
-  }, [subscriptionData]);  // Check if user can perform an action
-  const canPerformAction = (action) => {
-    console.log('🔍 canPerformAction check:', {
-      action,
-      limits,
-      usage,
-      hasLimits: !!limits,
-      hasUsage: !!usage,
-      loading,
-      subscriptionData,
-      // Add detailed structure logging
-      limitsDetail: limits ? {
-        pathwaysPerMonth: limits.pathwaysPerMonth,
-        uniGuideProUsage: limits.uniGuideProUsage,
-        myStudyPathUsage: limits.myStudyPathUsage
-      } : null,
-      usageDetail: usage ? {
-        pathwaysGenerated: usage.pathwaysGenerated,
-        uniGuideProUsage: usage.uniGuideProUsage,
-        myStudyPathUsage: usage.myStudyPathUsage
-      } : null
-    });
-
-    // DEBUG: Special logging for useMyStudyPath action
+    setLoading(false);  }, [planType, subscriptionLimits, subscriptionUsage]); // Use memoized values
+  
+  // Check if user can perform an action
+  const canPerformAction = useCallback((action) => {
+    // Reduced logging to prevent infinite loops
     if (action === 'useMyStudyPath') {
-      console.log('🔍 DEBUG useMyStudyPath check:', {
-        action,
-        planType: subscriptionData?.planType,
-        loading,
+      console.log('🔍 canPerformAction(useMyStudyPath):', {
+        planType,
         hasLimits: !!limits,
-        hasUsage: !!usage,
-        limits,
-        usage,
-        myStudyPathLimit: limits?.myStudyPathUsage,
-        myStudyPathUsage: usage?.myStudyPathUsage,
-        loadingCondition: !limits || !usage,
-        isPaidPlan: subscriptionData?.planType !== 'free'
+        hasUsage: !!usage
       });
-    }
-
-    // Handle loading state - provide defaults for free users to prevent blocking
+    }    // Handle loading state - provide defaults for free users to prevent blocking
     if (!limits || !usage) {
       console.log('⏳ Subscription data still loading, using defaults for action:', action);
-      
-      // Get plan type or default to 'free'
-      const planType = subscriptionData?.planType || 'free';
       
       // If it's a paid plan, assume they can perform the action during loading
       if (planType !== 'free') {
@@ -131,7 +100,7 @@ export const useSubscriptionLimits = () => {
       }
       
       // For free users, provide sensible defaults during loading state
-      const defaultFreeUsage = subscriptionData?.usage || {
+      const defaultFreeUsage = subscriptionUsage || {
         pathwaysGenerated: 0,
         uniGuideProUsage: 0,
         myStudyPathUsage: 0,
@@ -140,57 +109,25 @@ export const useSubscriptionLimits = () => {
       };
       
       // Check specific actions for free users with default limits
-      switch (action) {
-        case 'generatePathway':
+      switch (action) {        case 'generatePathway':
         case 'pathway_generation':
           const canGenerateDefault = defaultFreeUsage.pathwaysGenerated < 1;
-          console.log('🗺️ Loading state - pathway generation check:', {
-            used: defaultFreeUsage.pathwaysGenerated,
-            limit: 1,
-            canDo: canGenerateDefault
-          });
-          return canGenerateDefault;        case 'useUniGuidePro':
+          return canGenerateDefault;          case 'useUniGuidePro':
           // Check if free users have reached their limit
-          const planType = subscriptionData?.planType || 'free';
           const usageLimit = planType === 'free' ? 5 : planType === 'premium' ? 10 : -1;
           const currentUsage = defaultFreeUsage.uniGuideProUsage || 0;
           const canUse = usageLimit === -1 || currentUsage < usageLimit;
-          
-          console.log('🎓 Loading state - UniGuidePro check:', {
-            planType,
-            usageLimit,
-            currentUsage,
-            canDo: canUse,
-            message: canUse ? 'Access granted' : 'Usage limit reached'
-          });
-          return canUse;
-
-          case 'useMyStudyPath':
+          return canUse;case 'useMyStudyPath':
           // MyStudyPath is a premium feature - requires paid plan
-          console.log('📚 Loading state - MyStudyPath check:', {
-            planType: subscriptionData?.planType || 'free',
-            message: 'MyStudyPath is a premium-only feature',
-            canDo: false
-          });
           return false; // MyStudyPath always requires paid plan
-        
-        case 'compareUniversities':
+          case 'compareUniversities':
           const canCompareDefault = defaultFreeUsage.universityComparisons < 3;
-          console.log('🏫 Loading state - university comparison check:', {
-            used: defaultFreeUsage.universityComparisons,
-            limit: 3,
-            canDo: canCompareDefault
-          });
           return canCompareDefault;
-        
-        case 'exportPdf':
+          case 'exportPdf':
         case 'useAdvancedFilters':
         case 'viewAnalytics':
-          console.log('📄 Loading state - feature requires paid plan');
           return false; // These require paid plans
-        
-        default:
-          console.log('❓ Unknown action during loading state:', action);
+          default:
           return false;
       }
     }
@@ -198,36 +135,14 @@ export const useSubscriptionLimits = () => {
     switch (action) {      case 'generatePathway':
       case 'pathway_generation':
         const canGeneratePathway = limits.pathwaysPerMonth === -1 || (usage.pathwaysGenerated || 0) < limits.pathwaysPerMonth;
-        console.log('🗺️ generatePathway/pathway_generation check:', {
-          limit: limits.pathwaysPerMonth,
-          used: usage.pathwaysGenerated || 0,
-          usedRaw: usage.pathwaysGenerated,
-          canDo: canGeneratePathway
-        });
         return canGeneratePathway;        case 'useUniGuidePro':
         // Check usage limits based on plan type
         const uniGuideLimit = limits.uniGuideProUsage;
         const uniGuideUsage = usage.uniGuideProUsage || 0;
         const canUseUniGuide = uniGuideLimit === -1 || uniGuideUsage < uniGuideLimit;
-        
-        console.log('🎓 useUniGuidePro check:', {
-          limit: uniGuideLimit,
-          usage: uniGuideUsage,
-          planType: subscriptionData?.planType || 'free',
-          canDo: canUseUniGuide,
-          message: canUseUniGuide ? 'Access granted' : 'Usage limit reached'
-        });
-        return canUseUniGuide;
-
-        case 'useMyStudyPath':
+        return canUseUniGuide;        case 'useMyStudyPath':
         // MyStudyPath requires paid plan (Premium or Pro)
-        const isPaidPlan = subscriptionData?.planType === 'premium' || subscriptionData?.planType === 'pro';
-        console.log('📚 useMyStudyPath check:', {
-          planType: subscriptionData?.planType,
-          isPaidPlan,
-          canDo: isPaidPlan,
-          message: isPaidPlan ? 'Access granted (paid plan)' : 'Requires premium plan'
-        });
+        const isPaidPlan = planType === 'premium' || planType === 'pro';
         return isPaidPlan;
       
       case 'compareUniversities':
@@ -238,21 +153,23 @@ export const useSubscriptionLimits = () => {
       
       case 'useAdvancedFilters':
         return limits.advancedFilters;
-      
-      case 'viewAnalytics':
+        case 'viewAnalytics':
         return limits.analytics;
-      
-      default:
-        console.log('❓ Unknown action:', action);
+        default:
         return false;
     }
-  };
-  // Get remaining count for a specific action
-  const getRemainingCount = (action) => {
+  }, [limits, usage, planType, subscriptionData?.planType]); // Add dependency array for useCallback
+    // Get remaining count for a specific action
+  const getRemainingCount = useCallback((action) => {
     // Handle loading state - provide defaults for free users
     if (!limits || !usage) {
-      const planType = subscriptionData?.planType || 'free';
-      const defaultUsage = subscriptionData?.usage || {
+      // For paid plans during loading, assume they have access
+      if (planType !== 'free') {
+        return Infinity;
+      }
+
+      // For free users during loading, use default limits
+      const defaultUsage = subscriptionUsage || {
         pathwaysGenerated: 0,
         uniGuideProUsage: 0,
         myStudyPathUsage: 0,
@@ -288,14 +205,12 @@ export const useSubscriptionLimits = () => {
       
       case 'exportPdf':
         return limits.pdfExports === -1 ? Infinity : Math.max(0, limits.pdfExports - (usage.pdfExports || 0));
-      
-      default:
+        default:
         return 0;
     }
-  };
-
+  }, [limits, usage, planType, subscriptionUsage]); // Add dependency array for useCallback
   // Track usage for an action
-  const trackUsage = async (action) => {
+  const trackUsage = useCallback(async (action) => {
     if (!currentUser) return false;
 
     try {
@@ -338,14 +253,12 @@ export const useSubscriptionLimits = () => {
             [usageKey]: (prev[usageKey] || 0) + 1
           }));
         }
-      }
-
-      return success;
+      }      return success;
     } catch (error) {
       console.error('Error tracking usage:', error);
       return false;
     }
-  };
+  }, [currentUser]); // Add dependency array for useCallback
 
   // Get usage percentage for display
   const getUsagePercentage = (action) => {

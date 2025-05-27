@@ -8,7 +8,7 @@ import SubscriptionPlans from '../subscription/SubscriptionPlans';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { FaUser, FaGraduationCap, FaDollarSign, FaGlobe, FaCalendarAlt, FaCheckCircle, FaClock, FaExclamationTriangle, FaSync, FaBell, FaCrown, FaInfoCircle } from 'react-icons/fa';
+import { FaUser, FaGraduationCap, FaDollarSign, FaGlobe, FaCalendarAlt, FaCheckCircle, FaClock, FaExclamationTriangle, FaSync, FaBell, FaCrown } from 'react-icons/fa';
 
 const MyStudyAbroadPath = () => {
   const { currentUser } = useAuth();  const { 
@@ -28,20 +28,17 @@ const MyStudyAbroadPath = () => {
   const [activeStep, setActiveStep] = useState(null);  const [lastProfileUpdate, setLastProfileUpdate] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);  const [profileHash, setProfileHash] = useState(null); // Track profile changes
   const profileHashKey = `profile-hash-${currentUser?.uid}`;
-    // Memoize permission check to prevent infinite re-renders
+  
+  // Memoize permission check to prevent infinite re-renders
   const canUseMyStudyPath = useMemo(() => {
-    if (subscriptionLoading) return false;
     return canPerformAction('useMyStudyPath');
-  }, [canPerformAction, planType, subscriptionLoading]);
-
-  // Effect to load user profile and pathway on mount
+  }, [canPerformAction, planType, subscriptionLoading]);// Effect to load user profile and pathway on mount
   useEffect(() => {
     if (currentUser && !subscriptionLoading && !userProfile) {
       loadUserProfile();
     }
-  }, [currentUser, subscriptionLoading, userProfile]);
+  }, [currentUser, subscriptionLoading]);
 
-  // Load user profile function (no useCallback to prevent circular dependencies)
   const loadUserProfile = async () => {
     try {
       const profile = await academicProfileService.getAcademicProfile(currentUser.uid);
@@ -49,24 +46,27 @@ const MyStudyAbroadPath = () => {
       
       if (profile && isProfileComplete(profile)) {
         // Generate hash of current profile preferences
-        const currentProfileHash = generateProfileHash(profile);        
-
-        // Check subscription before loading existing pathway
+        const currentProfileHash = generateProfileHash(profile);
+          // Check subscription before loading existing pathway
         if (canUseMyStudyPath) {
           // Only check for selected pathway or profile changes if needed
           if (!pathway || (profileHash && profileHash !== currentProfileHash)) {
             console.log('🔄 Profile preferences changed or first load, checking for updates...');
-              // Check if user has selected a pathway from UniGuidePro
-            const selectedPathway = await studyAbroadService.getSelectedPathway(currentUser.uid);
-            if (selectedPathway) {
-              console.log('📋 Found selected pathway from UniGuidePro, generating detailed analysis...');
-              // Generate detailed AI-powered analysis
-              await generateDetailedAnalysis(selectedPathway, profile);
-              setProfileHash(currentProfileHash);
-              return;
-            } else {
-              console.log('📋 No selected pathway from UniGuidePro - proceeding with existing pathway logic');
-            }
+            
+            // Check if user has selected a pathway from UniGuidePro
+            try {
+              const selectedPathway = await studyAbroadService.getSelectedPathway(currentUser.uid);
+              if (selectedPathway) {
+                console.log('📋 Found selected pathway from UniGuidePro, generating detailed analysis...');
+                // Generate detailed AI-powered analysis
+                await generateDetailedAnalysis(selectedPathway, profile);
+                setProfileHash(currentProfileHash);
+                return;
+              }
+            } catch (error) {
+              console.log('📋 No selected pathway found or access denied, proceeding with existing pathway logic');
+              // Continue with normal flow - this is expected when no selected pathway exists
+            }            
             // Try to load existing pathway or generate new one
             await loadExistingPathway(profile, currentProfileHash !== profileHash);
           } else {
@@ -98,9 +98,8 @@ const MyStudyAbroadPath = () => {
       setAlert({
         type: 'error',
         message: 'Failed to load your profile. Please try again.'
-      });    
-    } finally {
-      // Only set loading to false after all async operations are complete      
+      });    } finally {
+      // Only set loading to false after all async operations are complete
       setLoading(false);
     }
   };
@@ -141,8 +140,7 @@ const MyStudyAbroadPath = () => {
               type: 'success',
               message: '✨ Your pathway has been updated based on your profile changes!',
               icon: <FaSync />
-            });          
-          } else {
+            });          } else {
             console.log('✅ Setting existing pathway (no admin updates found)');
             setPathway(existingPathway);
             console.log('🎯 Pathway state updated:', existingPathway);
@@ -158,9 +156,7 @@ const MyStudyAbroadPath = () => {
           setAlert({
             type: 'info',
             message: 'Your saved study abroad pathway has been loaded.'
-          });
-        }      
-      } else {
+          });}      } else {
         console.log('❌ No existing pathway found, generating new one');
         // Auto-generate pathway if profile is complete but no pathway exists
         await generatePersonalizedPath(profile);
@@ -339,9 +335,7 @@ const MyStudyAbroadPath = () => {
       });
     }
   };  const regeneratePathway = async () => {
-    if (!userProfile) return;
-
-    // Check subscription limits for pathway regeneration
+    if (!userProfile) return;    // Check subscription limits for pathway regeneration
     if (!canUseMyStudyPath) {
       showUpgradePrompt('useMyStudyPath', () => setShowUpgradeModal(true));
       return;
@@ -350,36 +344,11 @@ const MyStudyAbroadPath = () => {
     setGeneratingPath(true);
     setAlert({
       type: 'info',
-      message: 'Checking for profile changes and regenerating comprehensive AI-powered pathway...',
+      message: 'Regenerating comprehensive AI-powered pathway with the latest information...',
       icon: <FaSync className="animate-spin" />
     });
     
     try {
-      // Check for profile changes first
-      const profileUpdateTimestamp = localStorage.getItem(`profileUpdate_${currentUser.uid}`);
-      if (profileUpdateTimestamp && profileUpdateTimestamp !== lastProfileUpdate) {
-        console.log('📋 Profile changes detected during manual refresh, updating lastProfileUpdate');
-        setLastProfileUpdate(profileUpdateTimestamp);
-        
-        // Check if the country or course has changed (major changes)
-        const currentCountry = userProfile.preferred_countries?.[0];
-        const currentCourse = userProfile.preferred_fields_of_study?.[0];
-        
-        if (pathway && (pathway.country !== currentCountry || pathway.course !== currentCourse)) {
-          setAlert({
-            type: 'info',
-            message: '🔄 Major profile changes detected. Generating updated pathway with new preferences...',
-            icon: <FaSync className="animate-spin" />
-          });
-        } else {
-          setAlert({
-            type: 'info',
-            message: '🔄 Regenerating pathway with latest information and profile updates...',
-            icon: <FaSync className="animate-spin" />
-          });
-        }
-      }
-      
       // Track usage for regeneration
       const tracked = await trackUsage('useMyStudyPath');
       if (!tracked) {
@@ -496,28 +465,51 @@ const MyStudyAbroadPath = () => {
     if (!pathway?.steps) return 0;
     const completedSteps = pathway.steps.filter(step => step.status === 'completed').length;
     return Math.round((completedSteps / pathway.steps.length) * 100);
-  };  // Effect to check for profile updates only when lastProfileUpdate changes (manual trigger)
+  };
+  // Check for profile updates that might require pathway sync
   useEffect(() => {
     const checkForProfileUpdates = async () => {
       if (!currentUser || !userProfile || !pathway) return;
       
       const profileUpdateTimestamp = localStorage.getItem(`profileUpdate_${currentUser.uid}`);
       if (profileUpdateTimestamp && profileUpdateTimestamp !== lastProfileUpdate) {
-        console.log('📋 Profile update detected, but not auto-refreshing. User can manually refresh if needed.');
         setLastProfileUpdate(profileUpdateTimestamp);
         
-        // Show notification that profile has changed, but don't auto-update
-        setAlert({
-          type: 'info',
-          message: '📋 Profile changes detected. Click "Refresh Pathway" to update your pathway with new preferences.',
-          icon: <FaInfoCircle />
-        });
+        // Check if the country or course has changed (major changes)
+        const currentCountry = userProfile.preferred_countries?.[0];
+        const currentCourse = userProfile.preferred_fields_of_study?.[0];
+        
+        if (pathway.country !== currentCountry || pathway.course !== currentCourse) {
+          setAlert({
+            type: 'info',
+            message: '🔄 Major profile changes detected. Generating updated pathway...',
+            icon: <FaSync className="animate-spin" />
+          });
+          await generatePersonalizedPath(userProfile);
+        } else {
+          // Minor changes - just refresh existing pathway          try {
+            const refreshResult = await studyAbroadService.checkAndRefreshPathway(currentUser.uid, pathway);
+            // Check if the result has success=true and contains a valid pathway
+            if (refreshResult && refreshResult.success && refreshResult.pathway && refreshResult.pathway.id) {
+              console.log('✅ Periodic check: Setting refreshed pathway from profile updates');
+              setPathway(refreshResult.pathway);
+              setAlert({
+                type: 'success',
+                message: '✨ Your pathway has been updated based on your profile changes.',
+                icon: <FaSync />
+              });
+            }
+          } catch (error) {
+            console.error('Error refreshing pathway:', error);
+          }
+        }
       }
     };
 
-    // Only check once when the component mounts or lastProfileUpdate changes
-    checkForProfileUpdates();
-  }, [currentUser, lastProfileUpdate, userProfile?.updated_at]);
+    // Check for updates every 10 seconds when component is active
+    const interval = setInterval(checkForProfileUpdates, 10000);
+    return () => clearInterval(interval);
+  }, [currentUser, lastProfileUpdate, userProfile, pathway]);
 
   const generateDetailedAnalysis = async (selectedPathway, profile) => {
     try {
