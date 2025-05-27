@@ -1103,10 +1103,58 @@ class StudyAbroadService {
       console.error('Error saving user pathway:', error);
       throw new Error('Failed to save pathway');
     }
-  }
-  /**
-   * Get user's saved pathways
+  }  /**
+   * Remove/hide user pathway (soft delete by setting isActive to false)
    */
+  async removeUserPathway(userId, pathwayId) {
+    try {
+      const pathwayRef = doc(db, this.userPathwaysCollection, pathwayId);
+      await updateDoc(pathwayRef, {
+        isActive: false,
+        removedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      return true;
+    } catch (error) {
+      console.error('Error removing user pathway:', error);
+      throw new Error('Failed to remove pathway');
+    }
+  }
+
+  /**
+   * Permanently delete user pathway
+   */
+  async deleteUserPathway(pathwayId) {
+    try {
+      await deleteDoc(doc(db, this.userPathwaysCollection, pathwayId));
+      return true;
+    } catch (error) {
+      console.error('Error deleting user pathway:', error);
+      throw new Error('Failed to delete pathway');
+    }
+  }
+
+  /**
+   * Check if user already has a pathway for the given criteria
+   */
+  async checkExistingPathway(userId, country, course, academicLevel) {
+    try {
+      const existingQuery = query(
+        collection(db, this.userPathwaysCollection),
+        where('userId', '==', userId),
+        where('country', '==', country),
+        where('course', '==', course),
+        where('academicLevel', '==', academicLevel),
+        where('isActive', '==', true)
+      );
+      
+      const snapshot = await getDocs(existingQuery);
+      return !snapshot.empty ? snapshot.docs[0].data() : null;
+    } catch (error) {
+      console.error('Error checking existing pathway:', error);
+      return null;
+    }
+  }
   async getUserPathways(userId) {
     try {
       const q = query(
