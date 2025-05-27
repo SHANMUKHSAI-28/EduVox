@@ -77,19 +77,33 @@ class StudyAbroadService {
         
         // Return limited or full pathway based on user subscription
         const userTier = userProfile.userTier || 'free';
+        console.log('🔍 User tier detected:', userTier);
         if (userTier === 'free') {
-          return this.createLimitedPathwayForFreeUsers(aiGeneratedPathway);
+          console.log('📱 Returning limited pathway for free user');
+          const limitedPathway = this.createLimitedPathwayForFreeUsers(aiGeneratedPathway);
+          console.log('📱 Limited pathway created:', limitedPathway ? 'SUCCESS' : 'FAILED');
+          return limitedPathway;
         }
         
+        console.log('💎 Returning full pathway for premium user');
         return aiGeneratedPathway;
       }
-      
-      // Last resort: create basic fallback pathway if AI fails
-      console.log('AI generation failed, creating basic fallback');
+        // Last resort: create basic fallback pathway if AI fails
+      console.log('⚠️ AI generation failed, creating basic fallback');
       const fallbackPathway = await this.createBasicFallbackPathway(userProfile);
       await this.saveUserPathway(userId, fallbackPathway);
       
-      return fallbackPathway;    } catch (error) {
+      // Apply user tier limitations to fallback pathway too
+      const userTier = userProfile.userTier || 'free';
+      console.log('🔍 User tier for fallback:', userTier);
+      if (userTier === 'free') {
+        console.log('📱 Returning limited fallback pathway for free user');
+        const limitedFallback = this.createLimitedPathwayForFreeUsers(fallbackPathway);
+        console.log('📱 Limited fallback created:', limitedFallback ? 'SUCCESS' : 'FAILED');
+        return limitedFallback;
+      }
+      
+      return fallbackPathway;} catch (error) {
       console.error('Error fetching study abroad pathway:', error);
       
       // Emergency fallback - try AI generation first
@@ -101,23 +115,56 @@ class StudyAbroadService {
           // Store full pathway in database for future use
           await this.savePathwayTemplate(aiEmergencyPathway);
           await this.saveUserPathway(userProfile.userId, aiEmergencyPathway);
-          
-          // Return limited or full pathway based on user subscription
+            // Return limited or full pathway based on user subscription
           const userTier = userProfile.userTier || 'free';
+          console.log('🔍 User tier for emergency AI:', userTier);
           if (userTier === 'free') {
-            return this.createLimitedPathwayForFreeUsers(aiEmergencyPathway);
+            console.log('📱 Returning limited emergency pathway for free user');
+            const limitedEmergency = this.createLimitedPathwayForFreeUsers(aiEmergencyPathway);
+            console.log('📱 Limited emergency created:', limitedEmergency ? 'SUCCESS' : 'FAILED');
+            return limitedEmergency;
           }
           
           return aiEmergencyPathway;
         }
-        
-        // If AI generation fails, use basic fallback
+          // If AI generation fails, use basic fallback
         console.log('Emergency AI generation failed, using basic fallback');
         const emergencyPathway = await this.createBasicFallbackPathway(userProfile);
         await this.saveUserPathway(userProfile.userId, emergencyPathway);
-        return emergencyPathway;
-      } catch (fallbackError) {
-        console.error('All emergency fallbacks failed:', fallbackError);
+        
+        // Apply user tier limitations even to emergency pathway
+        const userTier = userProfile.userTier || 'free';
+        console.log('🔍 User tier for emergency fallback:', userTier);
+        if (userTier === 'free') {
+          console.log('📱 Returning limited emergency fallback for free user');
+          const limitedEmergencyFallback = this.createLimitedPathwayForFreeUsers(emergencyPathway);
+          console.log('📱 Limited emergency fallback created:', limitedEmergencyFallback ? 'SUCCESS' : 'FAILED');
+          return limitedEmergencyFallback;
+        }
+        
+        return emergencyPathway;      } catch (fallbackError) {
+        console.error('❌ All emergency fallbacks failed:', fallbackError);
+        
+        // Final emergency pathway for free users - ensure they get SOMETHING
+        const userTier = userProfile.userTier || 'free';
+        if (userTier === 'free') {
+          console.log('🚨 Creating final emergency pathway for free user');
+          return {
+            id: `emergency_${Date.now()}`,
+            country: userProfile.preferredCountry || 'United States',
+            course: userProfile.desiredCourse || 'Computer Science',
+            academicLevel: userProfile.academicLevel || 'graduate',
+            isPremiumContentLimited: true,
+            upgradeMessage: "Upgrade to Premium or Pro to access detailed pathway information.",
+            steps: this.createBasicSteps(
+              userProfile.preferredCountry || 'United States', 
+              userProfile.desiredCourse || 'Computer Science'
+            ),
+            createdAt: new Date().toISOString(),
+            type: 'emergency_free'
+          };
+        }
+        
         throw new Error('Failed to retrieve study abroad pathway');
       }
     }
@@ -2689,10 +2736,139 @@ Make the analysis as detailed and personalized as possible based on the user's s
    * Provides basic information while hiding premium details
    * @param {Object} fullPathway - The complete pathway data
    * @returns {Object} Limited pathway with basic information
-   */
-  createLimitedPathwayForFreeUsers(fullPathway) {
+   */  createLimitedPathwayForFreeUsers(fullPathway) {
     try {
-      // Basic metadata to keep
+      console.log('🔄 Creating limited pathway for free user from:', fullPathway ? 'valid pathway' : 'null/undefined pathway');
+      
+      if (!fullPathway) {
+        console.error('❌ Cannot create limited pathway - fullPathway is null/undefined');
+          // Create a very basic emergency fallback instead of returning null
+        return {
+          id: `emergency_fallback_${Date.now()}`,
+          country: 'Study Abroad',
+          course: 'Your Course',
+          academicLevel: 'undergraduate',
+          isPremiumContentLimited: true,
+          upgradeMessage: "Upgrade to Premium or Pro to access detailed pathway information.",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          
+          // Standard timeline for all free users
+          timeline: [
+            {
+              month: "June 2025",
+              priority: "High",
+              timeFromStart: "12",
+              tasks: [
+                "Research universities and programs",
+                "Start GRE/IELTS/TOEFL preparation (if applicable)",
+                "Begin gathering academic transcripts"
+              ],
+              documents: "University shortlists, academic calendar"
+            },
+            {
+              month: "July 2025",
+              priority: "High",
+              timeFromStart: "11",
+              tasks: [
+                "Finalize university list",
+                "Request letters of recommendation",
+                "Continue language test preparation"
+              ],
+              documents: "Recommendation request letters, university application forms"
+            },
+            {
+              month: "August 2025",
+              priority: "Critical",
+              timeFromStart: "10",
+              tasks: [
+                "Take language proficiency tests (IELTS/TOEFL)",
+                "Start working on Statement of Purpose (SOP)",
+                "Begin researching funding options"
+              ],
+              documents: "IELTS/TOEFL score reports, SOP outline"
+            },
+            {
+              month: "September 2025",
+              priority: "High",
+              timeFromStart: "9",
+              tasks: [
+                "Refine SOP",
+                "Prepare CV/Resume",
+                "Explore scholarship opportunities"
+              ],
+              documents: "Draft SOP, CV/Resume, scholarship information"
+            },
+            {
+              month: "October 2025",
+              priority: "Critical",
+              timeFromStart: "8",
+              tasks: [
+                "Finalize SOP, CV/Resume",
+                "Submit scholarship applications",
+                "Prepare all required documents"
+              ],
+              documents: "Final SOP, CV/Resume, completed application forms"
+            }
+          ],
+          
+          steps: [
+            {
+              step: 1,
+              title: "Research Universities",
+              description: "Research and shortlist universities that offer your program",
+              duration: "2-3 months",
+              tasks: ["Find universities offering your program", "... Upgrade for more details"],
+              status: "pending",
+              isLimited: true
+            },
+            {
+              step: 2,
+              title: "Language Proficiency",
+              description: "Prepare and take language proficiency exams",
+              duration: "2-3 months",
+              tasks: ["Take IELTS or TOEFL test", "... Upgrade for more details"],
+              status: "pending",
+              isLimited: true
+            },
+            {
+              step: 3,
+              title: "Application Process",
+              description: "Apply to selected universities",
+              duration: "2-3 months",
+              tasks: ["Prepare application documents", "... Upgrade for more details"],
+              status: "pending",
+              isLimited: true
+            },
+            {
+              step: 4,
+              title: "Financial Planning",
+              description: "Plan for tuition and living expenses",
+              duration: "1-2 months",
+              tasks: ["Research scholarships and funding options", "... Upgrade for more details"],
+              status: "pending",
+              isLimited: true
+            },
+            {
+              step: 5,
+              title: "Visa Application",
+              description: "Apply for student visa",
+              duration: "1-2 months",
+              tasks: ["Gather required documents", "... Upgrade for more details"],
+              status: "pending",
+              isLimited: true
+            }
+          ],
+          
+          universities: [
+            {
+              name: "Top International University",
+              ranking: "Top Tier",
+              location: "Study Abroad"
+            }
+          ]
+        };
+      }      // Basic metadata to keep
       const limitedPathway = {
         id: fullPathway.id,
         country: fullPathway.country,
@@ -2711,15 +2887,64 @@ Make the analysis as detailed and personalized as possible based on the user's s
             }))
           : [],
         
-        // Keep timeline but limit details
-        timeline: fullPathway.timeline 
-          ? fullPathway.timeline.slice(0, 3).map(item => ({
-              month: item.month,
-              timeFromStart: item.timeFromStart,
-              tasks: item.tasks ? item.tasks.slice(0, 2) : []
-              // Remove priority, documents, etc.
-            }))
-          : [],
+        // Add standard timeline for all free users
+        timeline: [
+          {
+            month: "June 2025",
+            priority: "High",
+            timeFromStart: "12",
+            tasks: [
+              "Research universities and programs",
+              "Start GRE/IELTS/TOEFL preparation (if applicable)",
+              "Begin gathering academic transcripts"
+            ],
+            documents: "University shortlists, academic calendar"
+          },
+          {
+            month: "July 2025",
+            priority: "High",
+            timeFromStart: "11",
+            tasks: [
+              "Finalize university list",
+              "Request letters of recommendation",
+              "Continue language test preparation"
+            ],
+            documents: "Recommendation request letters, university application forms"
+          },
+          {
+            month: "August 2025",
+            priority: "Critical",
+            timeFromStart: "10",
+            tasks: [
+              "Take language proficiency tests (IELTS/TOEFL)",
+              "Start working on Statement of Purpose (SOP)",
+              "Begin researching funding options"
+            ],
+            documents: "IELTS/TOEFL score reports, SOP outline"
+          },
+          {
+            month: "September 2025",
+            priority: "High",
+            timeFromStart: "9",
+            tasks: [
+              "Refine SOP",
+              "Prepare CV/Resume",
+              "Explore scholarship opportunities"
+            ],
+            documents: "Draft SOP, CV/Resume, scholarship information"
+          },
+          {
+            month: "October 2025",
+            priority: "Critical",
+            timeFromStart: "8",
+            tasks: [
+              "Finalize SOP, CV/Resume",
+              "Submit scholarship applications",
+              "Prepare all required documents"
+            ],
+            documents: "Final SOP, CV/Resume, completed application forms"
+          }
+        ],
           
         // Basic visa information only
         visaRequirements: fullPathway.visaRequirements
@@ -2759,21 +2984,25 @@ Make the analysis as detailed and personalized as possible based on the user's s
             tasks: step.tasks ? [step.tasks[0], "... Upgrade for more details"] : [],
             status: "pending",
             isLimited: true
-          }))
-        : this.createBasicSteps(fullPathway.country, fullPathway.course);
+          }))        : this.createBasicSteps(fullPathway.country, fullPathway.course);
       
-      return limitedPathway;
-    } catch (error) {
-      console.error('Error creating limited pathway for free users:', error);
-      // If there's an error, return a very basic pathway
+      console.log('✅ Limited pathway created successfully with', limitedPathway.steps.length, 'steps');
+      return limitedPathway;    } catch (error) {
+      console.error('❌ Error creating limited pathway for free users:', error);
+      // If there's an error, return a very basic pathway - NEVER return null for free users
       return {
-        id: fullPathway.id,
-        country: fullPathway.country,
-        course: fullPathway.course,
-        academicLevel: fullPathway.academicLevel,
+        id: fullPathway?.id || `basic_${Date.now()}`,
+        country: fullPathway?.country || 'United States',
+        course: fullPathway?.course || 'Computer Science',
+        academicLevel: fullPathway?.academicLevel || 'graduate',
         isPremiumContentLimited: true,
         upgradeMessage: "Upgrade to Premium or Pro to access detailed pathway information.",
-        steps: this.createBasicSteps(fullPathway.country, fullPathway.course)
+        steps: this.createBasicSteps(
+          fullPathway?.country || 'United States', 
+          fullPathway?.course || 'Computer Science'
+        ),
+        createdAt: new Date().toISOString(),
+        type: 'error_fallback_free'
       };
     }
   }
@@ -2783,8 +3012,8 @@ Make the analysis as detailed and personalized as possible based on the user's s
    * @param {string} country - Target country
    * @param {string} course - Desired course
    * @returns {Array} Basic pathway steps
-   */
-  createBasicSteps(country, course) {
+   */  createBasicSteps(country, course) {
+    console.log('🔧 Creating basic steps for country:', country, 'course:', course);
     return [
       {
         step: 1,

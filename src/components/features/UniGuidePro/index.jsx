@@ -143,16 +143,20 @@ const UniGuidePro = () => {
           message: 'Found your existing pathway for this combination! No need to generate a new one.'
         });
         return;
-      }
+      }      await trackUsage('useUniGuidePro');
 
-      await trackUsage('useUniGuidePro');
+      console.log('🔍 UniGuidePro: planType =', planType);
+      console.log('🔍 UniGuidePro: subscriptionLoading =', subscriptionLoading);
 
       const userProfile = {
         userId: currentUser.uid,
+        userTier: planType, // Add user's subscription tier for proper pathway generation
         ...formData,
         budget: formData.budget ? parseInt(formData.budget) : null,
         currentGPA: formData.currentGPA ? parseFloat(formData.currentGPA) : null
       };
+
+      console.log('🔍 UniGuidePro: userProfile with userTier =', userProfile.userTier);
 
       const generatedPathway = await studyAbroadService.generatePathway(userProfile);
       setPathway(generatedPathway);
@@ -164,13 +168,158 @@ const UniGuidePro = () => {
       setAlert({
         type: 'success',
         message: 'Your study abroad roadmap has been generated successfully!'
-      });
-    } catch (error) {
+      });    } catch (error) {
       console.error('Error generating pathway:', error);
-      setAlert({
-        type: 'error',
-        message: 'Failed to generate pathway. Please try again.'
-      });
+        // Generate a guaranteed fallback for free users
+      if (planType === 'free') {
+        console.log('⚠️ Using emergency UI fallback for free user');
+        
+        // Create a minimal fallback pathway directly in the UI
+        const fallbackPathway = {
+          id: `fallback_${formData.preferredCountry}_${formData.desiredCourse}_${Date.now()}`,
+          country: formData.preferredCountry,
+          course: formData.desiredCourse,
+          academicLevel: formData.academicLevel,
+          isPremiumContentLimited: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          
+          // Standard timeline for all users regardless of country/course
+          timeline: [
+            {
+              month: "June 2025",
+              priority: "High",
+              timeFromStart: "12",
+              tasks: [
+                "Research universities and programs",
+                "Start GRE/IELTS/TOEFL preparation (if applicable)",
+                "Begin gathering academic transcripts"
+              ],
+              documents: "University shortlists, academic calendar"
+            },
+            {
+              month: "July 2025",
+              priority: "High",
+              timeFromStart: "11",
+              tasks: [
+                "Finalize university list",
+                "Request letters of recommendation",
+                "Continue language test preparation"
+              ],
+              documents: "Recommendation request letters, university application forms"
+            },
+            {
+              month: "August 2025",
+              priority: "Critical",
+              timeFromStart: "10",
+              tasks: [
+                "Take language proficiency tests (IELTS/TOEFL)",
+                "Start working on Statement of Purpose (SOP)",
+                "Begin researching funding options"
+              ],
+              documents: "IELTS/TOEFL score reports, SOP outline"
+            },
+            {
+              month: "September 2025",
+              priority: "High",
+              timeFromStart: "9",
+              tasks: [
+                "Refine SOP",
+                "Prepare CV/Resume",
+                "Explore scholarship opportunities"
+              ],
+              documents: "Draft SOP, CV/Resume, scholarship information"
+            },
+            {
+              month: "October 2025",
+              priority: "Critical",
+              timeFromStart: "8",
+              tasks: [
+                "Finalize SOP, CV/Resume",
+                "Submit scholarship applications",
+                "Prepare all required documents"
+              ],
+              documents: "Final SOP, CV/Resume, completed application forms"
+            }
+          ],
+          
+          steps: [
+            {
+              step: 1,
+              title: "Research Universities",
+              description: "Research universities offering your program",
+              duration: "2-3 months",
+              tasks: ["Find universities offering your program", "Check admission requirements"],
+              status: "pending",
+              isLimited: true
+            },
+            {
+              step: 2,
+              title: "Prepare Application",
+              description: "Get your application documents ready",
+              duration: "1-2 months",
+              tasks: ["Prepare your CV/resume", "Write personal statement"],
+              status: "pending",
+              isLimited: true
+            },
+            {
+              step: 3,
+              title: "Take Required Tests",
+              description: "Complete required language and aptitude tests",
+              duration: "2-3 months",
+              tasks: ["Take English proficiency tests", "Take GRE/GMAT if required"],
+              status: "pending",
+              isLimited: true
+            },
+            {
+              step: 4,
+              title: "Apply for Student Visa",
+              description: "Apply for a student visa once accepted",
+              duration: "1-2 months",
+              tasks: ["Gather visa documents", "Apply for student visa"],
+              status: "pending",
+              isLimited: true
+            },
+            {
+              step: 5,
+              title: "Pre-Departure Preparation",
+              description: "Get ready to travel and begin your studies",
+              duration: "1 month",
+              tasks: ["Arrange accommodation", "Book flights"],
+              status: "pending",
+              isLimited: true
+            }
+          ],
+          
+          universities: [
+            {
+              name: "Top University in " + formData.preferredCountry,
+              ranking: "#1-10",
+              location: formData.preferredCountry
+            },
+            {
+              name: "Mid-tier University in " + formData.preferredCountry,
+              ranking: "#20-50",
+              location: formData.preferredCountry
+            }
+          ],
+          
+          upgradeMessage: "Upgrade to Premium or Pro to access detailed pathway information, scholarship opportunities, and university-specific requirements."
+        };
+        
+        setPathway(fallbackPathway);
+        setExistingPathways(prev => [fallbackPathway, ...prev]);
+        setShowForm(false);
+        setAlert({
+          type: 'info',
+          message: 'Basic study abroad path created. Upgrade for detailed recommendations.'
+        });
+      } else {
+        setAlert({
+          type: 'error',
+          message: 'Failed to generate pathway. Please try again.'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -661,6 +810,40 @@ const UniGuidePro = () => {
               )}
             </Card.Header>
             <Card.Body>
+              {/* Overview section for free users */}
+              {planType === 'free' && (
+                <div className="mb-4">
+                  <Card className="bg-light mb-4">
+                    <Card.Header className="bg-info text-white">
+                      <h5 className="mb-0">Study Abroad Journey Overview</h5>
+                    </Card.Header>
+                    <Card.Body>
+                      <h6>Key Steps:</h6>
+                      <ol>
+                        <li><strong>Academic Preparation:</strong> Maintain good academic standing and gather relevant academic documents.</li>
+                        <li><strong>Language Proficiency:</strong> Prepare for and complete IELTS/TOEFL requirements.</li>
+                        <li><strong>University Research:</strong> Research universities in {pathway.country} for your {pathway.course} program.</li>
+                        <li><strong>Application Process:</strong> Prepare and submit applications to selected universities.</li>
+                        <li><strong>Visa Application:</strong> Complete visa requirements after receiving acceptance.</li>
+                      </ol>
+                      
+                      <h6>Top Recommendations:</h6>
+                      <ul>
+                        <li>Start preparing at least 12-18 months before your target start date</li>
+                        <li>Focus on both academic credentials and language proficiency</li>
+                        <li>Research financial requirements and scholarship options early</li>
+                        <li>Ensure all documentation is properly prepared and authenticated</li>
+                      </ul>
+                      
+                      <div className="alert alert-info">
+                        <FaInfoCircle className="mr-2" />
+                        This is a basic overview of your study abroad journey. Premium users receive detailed recommendations tailored to their specific profile and preferences.
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </div>
+              )}
+
               {/* Timeline View for Premium Users */}
               {planType !== 'free' && pathway.timeline && (
                 <div className="mb-4">
@@ -755,7 +938,159 @@ const UniGuidePro = () => {
                   </Accordion.Item>
                 ))}
               </Accordion>
-            </Card.Body>          </Card>
+            </Card.Body>          </Card>          {/* New Section: Detailed Timeline Overview for Free Users */}
+          {planType === 'free' && pathway && (
+            <Card className="mb-4">
+              <Card.Header className="bg-light">
+                <h5 className="mb-0">
+                  <FaCalendarAlt className="mr-2" />
+                  Study Abroad Timeline Overview
+                </h5>
+              </Card.Header>
+              <Card.Body>
+                <p className="mb-3">This general timeline will help you prepare for your study abroad journey to {pathway.country} for {pathway.course}:</p>
+                
+                <div className="timeline-container">
+                  {/* June 2025 */}
+                  <Card className="mb-3 border-left-primary">
+                    <Card.Body>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1">June 2025</h6>
+                          <Badge variant="warning">High Priority</Badge>
+                          <p className="mt-2 mb-2">
+                            <strong>Time from start:</strong> 12 months
+                          </p>
+                          <div>
+                            <strong>Tasks:</strong>
+                            <ul className="mt-2">
+                              <li>Research universities and programs</li>
+                              <li>Start GRE/IELTS/TOEFL preparation (if applicable)</li>
+                              <li>Begin gathering academic transcripts</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+
+                  {/* July 2025 */}
+                  <Card className="mb-3 border-left-primary">
+                    <Card.Body>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1">July 2025</h6>
+                          <Badge variant="warning">High Priority</Badge>
+                          <p className="mt-2 mb-2">
+                            <strong>Time from start:</strong> 11 months
+                          </p>
+                          <div>
+                            <strong>Tasks:</strong>
+                            <ul className="mt-2">
+                              <li>Finalize university list</li>
+                              <li>Request letters of recommendation</li>
+                              <li>Continue language test preparation</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+
+                  {/* August 2025 */}
+                  <Card className="mb-3 border-left-primary">
+                    <Card.Body>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1">August 2025</h6>
+                          <Badge variant="danger">Critical Priority</Badge>
+                          <p className="mt-2 mb-2">
+                            <strong>Time from start:</strong> 10 months
+                          </p>
+                          <div>
+                            <strong>Tasks:</strong>
+                            <ul className="mt-2">
+                              <li>Take language proficiency tests (IELTS/TOEFL)</li>
+                              <li>Start working on Statement of Purpose (SOP)</li>
+                              <li>Begin researching funding options</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+
+                  {/* September 2025 */}
+                  <Card className="mb-3 border-left-primary">
+                    <Card.Body>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1">September 2025</h6>
+                          <Badge variant="warning">High Priority</Badge>
+                          <p className="mt-2 mb-2">
+                            <strong>Time from start:</strong> 9 months
+                          </p>
+                          <div>
+                            <strong>Tasks:</strong>
+                            <ul className="mt-2">
+                              <li>Refine SOP</li>
+                              <li>Prepare CV/Resume</li>
+                              <li>Explore scholarship opportunities</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+
+                  {/* October 2025 */}
+                  <Card className="mb-3 border-left-primary">
+                    <Card.Body>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1">October 2025</h6>
+                          <Badge variant="danger">Critical Priority</Badge>
+                          <p className="mt-2 mb-2">
+                            <strong>Time from start:</strong> 8 months
+                          </p>
+                          <div>
+                            <strong>Tasks:</strong>
+                            <ul className="mt-2">
+                              <li>Finalize SOP, CV/Resume</li>
+                              <li>Submit scholarship applications</li>
+                              <li>Prepare all required documents</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+
+                  {/* Show the first 5 months then add a premium prompt for more */}
+                  <div className="p-4 bg-light rounded text-center">
+                    <p className="mb-3">
+                      <FaCrown className="mr-2 text-warning" />
+                      <strong>Upgrade to Premium</strong> to view the complete timeline with additional details:
+                    </p>
+                    <ul className="text-left mb-4">
+                      <li>Detailed monthly breakdown for the complete journey</li>
+                      <li>Required documents for each phase</li>
+                      <li>University-specific recommendations</li>
+                      <li>Scholarship and funding options</li>
+                    </ul>
+                    <Button 
+                      variant="warning" 
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="px-4"
+                    >
+                      <FaCrown className="mr-2" />
+                      Upgrade to Premium
+                    </Button>
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
+          )}
 
           {/* Premium Content - Universities Section */}
           {planType !== 'free' && pathway.universities && (

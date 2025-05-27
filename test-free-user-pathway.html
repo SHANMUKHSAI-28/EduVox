@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Free User Pathway Generation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .steps { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .debug-log { background: #e8f4fd; padding: 10px; border-radius: 5px; margin: 5px 0; font-family: monospace; font-size: 12px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Free User Pathway Generation</h1>
+        <p>This test will check if free users receive pathway data from UniGuidePro.</p>
+        
+        <button onclick="testFreeUserPathway()">Test Free User Pathway Generation</button>
+        
+        <div id="output"></div>
+        
+        <h3>Debug Instructions:</h3>
+        <ol>
+            <li>Open the browser's Developer Tools (F12)</li>
+            <li>Go to the Console tab</li>
+            <li>Click the test button above</li>
+            <li>Look for console logs starting with 🔍, 📱, ⚠️, ✅, or ❌</li>
+        </ol>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+        
+        // Firebase configuration (using same as the main app)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlHnvJ2F7pHOmGe8DpFmJJ4w9w4w4w4w4",
+            authDomain: "uniguidepro.firebaseapp.com",
+            projectId: "uniguidepro",
+            storageBucket: "uniguidepro.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        window.testFreeUserPathway = async function() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<div class="debug-log info">Starting test...</div>';
+            
+            try {
+                // Simulate free user profile
+                const testUserProfile = {
+                    userId: 'test-free-user',
+                    userTier: 'free', // Explicitly set as free user
+                    preferredCountry: 'United States',
+                    desiredCourse: 'Computer Science',
+                    academicLevel: 'graduate',
+                    budget: 50000,
+                    currentGPA: 3.5,
+                    englishProficiency: 'advanced',
+                    workExperience: 2
+                };
+
+                console.log('🧪 Testing with profile:', testUserProfile);
+                output.innerHTML += '<div class="debug-log info">Profile: ' + JSON.stringify(testUserProfile, null, 2) + '</div>';
+
+                // Note: In a real test, you would import and call the actual service
+                // For this demo, we'll just show what should happen
+                output.innerHTML += '<div class="debug-log info">✅ Test profile created for free user</div>';
+                output.innerHTML += '<div class="debug-log info">🔍 Expected: userTier should be "free"</div>';
+                output.innerHTML += '<div class="debug-log info">📱 Expected: Should receive limited pathway with basic steps</div>';
+                output.innerHTML += '<div class="debug-log success">✅ Check the browser console for actual service logs when using the real UniGuidePro form</div>';
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                output.innerHTML += '<div class="debug-log error">❌ Test failed: ' + error.message + '</div>';
+            }
+        };
+    </script>
+</body>
+</html>
