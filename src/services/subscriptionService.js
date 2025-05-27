@@ -35,9 +35,8 @@ class SubscriptionService {
           scholarshipAlerts: false,
           applicationTracking: false,
           analyticsReports: false
-        },        limits: {
-          pathwaysPerMonth: 1,
-          uniGuideProUsage: 5, // 5 free UniGuidePro uses per month
+        },        limits: {          pathwaysPerMonth: 1,
+          uniGuideProUsage: 3, // 3 free UniGuidePro uses per month
           myStudyPathUsage: 0, // MyStudyPath requires paid plan
           universityComparisons: 3, // 3 university comparisons (renamed from universitiesComparison)
           pdfExports: 0,
@@ -214,7 +213,7 @@ class SubscriptionService {
         updatedAt: serverTimestamp(),
         usage: {
           pathwaysGenerated: 0,
-          uniGuideProUsage: 0,
+          uniGuideProUsage: 0, // Start with 0 used, so they have all 3 available
           myStudyPathUsage: 0,
           universityComparisons: 0,
           pdfExports: 0

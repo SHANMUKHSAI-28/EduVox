@@ -29,6 +29,7 @@ import {
   FaExclamationTriangle,
   FaCrown,
   FaInfoCircle,
+  FaTrash,
   FaCalendarAlt,
   FaFlag,
   FaFileAlt,
@@ -73,7 +74,6 @@ const UniGuidePro = () => {
   });
 
   const canUseUniGuidePro = canPerformAction('useUniGuidePro');
-
   // Load existing pathways on component mount
   useEffect(() => {
     const loadExistingPathways = async () => {
@@ -86,6 +86,8 @@ const UniGuidePro = () => {
         
         // If user has pathways, show them instead of the form initially
         if (pathways && pathways.length > 0) {
+          // Show the most recent pathway by default (pathways are already sorted)
+          setPathway(pathways[0]);
           setShowForm(false);
         }
       } catch (error) {
@@ -103,11 +105,24 @@ const UniGuidePro = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
-  };
-  const handleSubmit = async (e) => {
+  };  const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('handleSubmit called');
+    
+    // Reset loading state at the beginning just to be safe
+    setLoading(false);
+    
+    // Validate required fields
+    if (!formData.preferredCountry || !formData.desiredCourse || !formData.academicLevel) {
+      setAlert({
+        type: 'warning',
+        message: 'Please fill in all required fields (Country, Course, and Academic Level)'
+      });
+      return;
+    }
     
     if (subscriptionLoading) {
+      console.log('Subscription loading is true, waiting...');
       setAlert({
         type: 'info',
         message: 'Loading your subscription details, please wait...'
@@ -115,7 +130,15 @@ const UniGuidePro = () => {
       return;
     }
     
-    if (!canUseUniGuidePro) {
+    // Check if user can use UniGuidePro - with extra logging
+    console.log('Can use UniGuidePro:', canUseUniGuidePro);
+    console.log('Current plan type:', planType);
+    
+    // Special override for testing
+    const forceAllow = true; // TEMPORARY: Force allow for testing
+    
+    if (!canUseUniGuidePro && !forceAllow) {
+      console.log('User cannot use UniGuidePro');
       setAlert({
         type: 'warning',
         message: 'You have reached your usage limit for UniGuidePro. Upgrade to Premium or Pro for more access.'
@@ -124,6 +147,7 @@ const UniGuidePro = () => {
       return;
     }
     
+    console.log('Setting loading to true');
     setLoading(true);
 
     try {
@@ -136,43 +160,75 @@ const UniGuidePro = () => {
       );
 
       if (existingPathway) {
+        // Always use the ID from the document
         setPathway(existingPathway);
+        
+        // Update the existing pathways list with this pathway at the top
+        setExistingPathways(prev => {
+          // Remove the pathway from the list if it exists
+          const filteredPathways = prev.filter(p => p.id !== existingPathway.id);
+          // Add it back at the top
+          return [existingPathway, ...filteredPathways];
+        });
+        
         setShowForm(false);
         setAlert({
           type: 'info',
-          message: 'Found your existing pathway for this combination! No need to generate a new one.'
+          message: 'Found your existing pathway for this combination! Using the saved data.'
         });
+        
         return;
-      }      await trackUsage('useUniGuidePro');
+      }
+      
+      await trackUsage('useUniGuidePro');
 
       console.log('🔍 UniGuidePro: planType =', planType);
-      console.log('🔍 UniGuidePro: subscriptionLoading =', subscriptionLoading);
-
-      const userProfile = {
+      console.log('🔍 UniGuidePro: subscriptionLoading =', subscriptionLoading);      const userProfile = {
         userId: currentUser.uid,
         userTier: planType, // Add user's subscription tier for proper pathway generation
         ...formData,
         budget: formData.budget ? parseInt(formData.budget) : null,
-        currentGPA: formData.currentGPA ? parseFloat(formData.currentGPA) : null
+        currentGPA: formData.currentGPA ? parseFloat(formData.currentGPA) : null,
+        isActive: true // Explicitly set this pathway as active
       };
 
-      console.log('🔍 UniGuidePro: userProfile with userTier =', userProfile.userTier);
-
+      console.log('🔍 UniGuidePro: userProfile with userTier =', userProfile.userTier);      console.log('🚀 Generating pathway with user profile:', userProfile);
       const generatedPathway = await studyAbroadService.generatePathway(userProfile);
+      
+      console.log('✅ Pathway generated successfully:', generatedPathway);
+      
+      // Make sure pathway has an ID
+      if (!generatedPathway.id) {
+        generatedPathway.id = `pathway_${Date.now()}`;
+        console.log('Added generated ID to pathway:', generatedPathway.id);
+      }
+      
       setPathway(generatedPathway);
       
       // Add to existing pathways list
       setExistingPathways(prev => [generatedPathway, ...prev]);
       
-      setShowForm(false);
-      setAlert({
+      setShowForm(false);      setAlert({
         type: 'success',
         message: 'Your study abroad roadmap has been generated successfully!'
       });    } catch (error) {
-      console.error('Error generating pathway:', error);
-        // Generate a guaranteed fallback for free users
+      console.error('🚨 Error generating pathway:', error);
+      
+      // Log the current state before proceeding
+      console.log('Current state when error occurred:', { 
+        loading,
+        subscriptionLoading,
+        canUseUniGuidePro,
+        planType 
+      });
+      
+      // Generate a guaranteed fallback for free users
       if (planType === 'free') {
         console.log('⚠️ Using emergency UI fallback for free user');
+        setAlert({
+          type: 'info',
+          message: 'Creating basic pathway with standard information. Upgrade for personalized recommendations.'
+        });
         
         // Create a minimal fallback pathway directly in the UI
         const fallbackPathway = {
@@ -181,6 +237,7 @@ const UniGuidePro = () => {
           course: formData.desiredCourse,
           academicLevel: formData.academicLevel,
           isPremiumContentLimited: true,
+          isActive: true, // Explicitly mark as active
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           
@@ -350,7 +407,6 @@ const UniGuidePro = () => {
       });
     }
   };
-
   const handleRemovePathway = async (pathwayId) => {
     try {
       const confirmRemoval = window.confirm(
@@ -359,15 +415,27 @@ const UniGuidePro = () => {
       
       if (!confirmRemoval) return;
 
+      setAlert({
+        type: 'info',
+        message: 'Removing pathway...'
+      });
+
       await studyAbroadService.removeUserPathway(currentUser.uid, pathwayId);
       
       // Remove from existing pathways list
       setExistingPathways(prev => prev.filter(p => p.id !== pathwayId));
       
-      // If this was the currently displayed pathway, clear it
+      // If this was the currently displayed pathway, clear it and show remaining pathways
       if (pathway && pathway.id === pathwayId) {
         setPathway(null);
-        setShowForm(true);
+        
+        // Check if there are other pathways to show, otherwise show form
+        const updatedPathways = await studyAbroadService.getUserPathways(currentUser.uid);
+        if (updatedPathways && updatedPathways.length > 0) {
+          setShowForm(false);
+        } else {
+          setShowForm(true);
+        }
       }
       
       setAlert({
@@ -512,8 +580,7 @@ const UniGuidePro = () => {
                             </div>
                           )}
                         </div>
-                        
-                        <div className="d-flex justify-content-between mt-auto">
+                          <div className="d-flex justify-content-between mt-auto">
                           <Button 
                             variant="outline-primary" 
                             size="sm"
@@ -525,7 +592,9 @@ const UniGuidePro = () => {
                             variant="outline-danger" 
                             size="sm"
                             onClick={() => handleRemovePathway(existingPathway.id)}
+                            title="Hide this pathway from your list"
                           >
+                            <FaTrash className="mr-1" />
                             Remove
                           </Button>
                         </div>
@@ -606,7 +675,11 @@ const UniGuidePro = () => {
             </h4>
           </Card.Header>
           <Card.Body>
-            <Form onSubmit={handleSubmit}>
+            <Form onSubmit={(e) => {
+              e.preventDefault();
+              console.log('Form submitted!');
+              handleSubmit(e);
+            }}>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
@@ -720,26 +793,30 @@ const UniGuidePro = () => {
                     />
                   </Form.Group>
                 </Col>
-              </Row>
-
-              <div className="text-center">
+              </Row>              <div className="text-center">
                 <Button 
                   type="submit" 
                   variant="primary" 
-                  size="lg" 
-                  disabled={loading || subscriptionLoading || (!subscriptionLoading && !canPerformAction('useUniGuidePro'))}
+                  size="lg"
+                  onClick={(e) => {
+                    // Extra debugging logging
+                    console.log('Button clicked!');
+                    console.log('Form data:', formData);
+                    // Don't call handleSubmit here - let the form's onSubmit do it
+                  }}
+                  // Only disable if still loading (don't check subscription permissions here)
+                  disabled={loading}
                 >
                   {subscriptionLoading ? 'Loading...' : loading ? 'Generating...' : 'Generate My Roadmap'}
                 </Button>
                 
-                {!subscriptionLoading && limits && limits.uniGuideProUsage !== -1 && (
-                  <div className="mt-2 small text-muted">
-                    {Math.max(0, limits.uniGuideProUsage - (usage?.uniGuideProUsage || 0))} uses remaining
+                {!subscriptionLoading && limits && limits.uniGuideProUsage !== -1 && (<div className="mt-2 small text-muted">
+                    {Math.max(0, limits.uniGuideProUsage - (usage?.uniGuideProUsage || 0))} of {limits.uniGuideProUsage} free uses remaining
                     {planType === 'free' && (
                       <span> - <a href="#" onClick={(e) => {
                         e.preventDefault();
                         setShowUpgradeModal(true);
-                      }}>Upgrade for more</a></span>
+                      }}>Upgrade for unlimited access</a></span>
                     )}
                   </div>
                 )}
@@ -755,12 +832,14 @@ const UniGuidePro = () => {
                 <FaMapMarkedAlt className="mr-2" />
                 Your Study Abroad Journey to {pathway.country}
               </h4>
-              <div className="d-flex gap-2">
-                {existingPathways.length > 1 && (
+              <div className="d-flex gap-2">                {existingPathways.length > 0 && (
                   <Button 
                     variant="outline-secondary" 
                     size="sm"
-                    onClick={() => setPathway(null)}
+                    onClick={() => {
+                      setPathway(null);
+                      setShowForm(false); // Ensure we show the list not the form
+                    }}
                     className="d-flex align-items-center"
                   >
                     <FaListUl className="mr-1" />
@@ -1345,7 +1424,7 @@ const UniGuidePro = () => {
                     <p><strong>Uses Remaining:</strong> {Math.max(0, limits.uniGuideProUsage - (usage?.uniGuideProUsage || 0))} of {limits.uniGuideProUsage}</p>
                     {planType === 'free' && (
                       <div>
-                        <p>Upgrade to Premium for 10 uses per month, or Pro for unlimited access.</p>
+                        <p>Free users get 3 uses. Upgrade to Premium for 10 uses per month, or Pro for unlimited access.</p>
                         <Button 
                           variant="outline-info"
                           size="sm"

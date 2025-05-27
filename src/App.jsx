@@ -14,7 +14,7 @@ import Profile from './pages/Profile';
 import Universities from './pages/Universities';
 import ShortlistedUniversities from './pages/ShortlistedUniversities';
 import AdminPanel from './pages/AdminPanel';
-import UniGuidePro from './components/features/UniGuidePro';
+import UniGuidePro from './components/features/UniGuidePro/index';
 import PathwayHistory from './components/features/PathwayHistory';
 
 function AppContent() {

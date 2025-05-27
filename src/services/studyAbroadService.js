@@ -1136,11 +1136,11 @@ class StudyAbroadService {
   async saveUserPathway(userId, pathway) {
     try {
       const userPathwayId = `${userId}_${pathway.id}`;
-      
-      // Sanitize the pathway data before saving
+        // Sanitize the pathway data before saving
       const sanitizedPathway = this.sanitizeDataForFirestore({
         ...pathway,
         userId,
+        isActive: true, // Explicitly set as active
         createdAt: new Date().toISOString()
       });
       
@@ -1155,12 +1155,25 @@ class StudyAbroadService {
    */
   async removeUserPathway(userId, pathwayId) {
     try {
-      const pathwayRef = doc(db, this.userPathwaysCollection, pathwayId);
+      // First, try with the combined ID format (userId_pathwayId)
+      let pathwayRef = doc(db, this.userPathwaysCollection, `${userId}_${pathwayId}`);
+      
+      // Check if the document exists with the combined ID format
+      const docSnap = await getDoc(pathwayRef);
+      
+      // If not found with combined ID, try with direct pathwayId
+      if (!docSnap.exists()) {
+        pathwayRef = doc(db, this.userPathwaysCollection, pathwayId);
+      }
+      
+      // Update the document to mark it as inactive
       await updateDoc(pathwayRef, {
         isActive: false,
         removedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
+      
+      console.log('✅ Pathway successfully marked as inactive');
       return true;
     } catch (error) {
       console.error('Error removing user pathway:', error);
@@ -1179,45 +1192,116 @@ class StudyAbroadService {
       console.error('Error deleting user pathway:', error);
       throw new Error('Failed to delete pathway');
     }
-  }
-
-  /**
+  }  /**
    * Check if user already has a pathway for the given criteria
    */
   async checkExistingPathway(userId, country, course, academicLevel) {
     try {
-      const existingQuery = query(
+      // First query for explicitly active pathways with matching criteria
+      const activeQuery = query(
         collection(db, this.userPathwaysCollection),
         where('userId', '==', userId),
         where('country', '==', country),
-        where('course', '==', course),
-        where('academicLevel', '==', academicLevel),
         where('isActive', '==', true)
       );
       
-      const snapshot = await getDocs(existingQuery);
-      return !snapshot.empty ? snapshot.docs[0].data() : null;
+      // Also create a basic query to find all pathways matching basic criteria
+      const basicQuery = query(
+        collection(db, this.userPathwaysCollection),
+        where('userId', '==', userId),
+        where('country', '==', country)
+      );
+      
+      // Execute the query for explicitly active pathways first
+      const activeSnapshot = await getDocs(activeQuery);
+      
+      // Process results for explicitly active pathways
+      let matchingPathways = [];
+      
+      if (!activeSnapshot.empty) {
+        // Filter active results to match all criteria exactly
+        matchingPathways = activeSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(pathway => 
+            pathway.course === course && 
+            pathway.academicLevel === academicLevel
+          );
+      }
+      
+      // If no matching active pathways found, try with pathways that don't have isActive specified
+      if (matchingPathways.length === 0) {
+        const allSnapshot = await getDocs(basicQuery);
+        
+        if (!allSnapshot.empty) {
+          // Filter all results to match criteria and undefined isActive
+          const undefinedActivePathways = allSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(pathway => 
+              pathway.course === course && 
+              pathway.academicLevel === academicLevel &&
+              pathway.isActive === undefined
+            );
+          
+          matchingPathways = [...matchingPathways, ...undefinedActivePathways];
+        }
+      }
+      
+      if (matchingPathways.length === 0) {
+        console.log(`No existing pathway found for ${country}, ${course}, ${academicLevel}`);
+        return null;
+      }
+      
+      console.log(`✅ Found existing pathway for ${country}, ${course}, ${academicLevel}`);
+      return matchingPathways[0]; // Return the first matching pathway
     } catch (error) {
       console.error('Error checking existing pathway:', error);
       return null;
     }
-  }
-  async getUserPathways(userId) {
+  }async getUserPathways(userId) {
     try {
-      const q = query(
+      // First query for pathways that have isActive explicitly set to true
+      const activeQuery = query(
+        collection(db, this.userPathwaysCollection),
+        where('userId', '==', userId),
+        where('isActive', '==', true)
+      );
+      
+      // Then query for pathways that don't have isActive field at all
+      const unspecifiedQuery = query(
         collection(db, this.userPathwaysCollection),
         where('userId', '==', userId)
       );
       
-      const querySnapshot = await getDocs(q);
-      const pathways = [];
+      // Execute the first query for explicitly active pathways
+      const activeSnapshot = await getDocs(activeQuery);
+      let pathways = [];
       
-      querySnapshot.forEach((doc) => {
+      // Process active pathways
+      activeSnapshot.forEach((doc) => {
+        const data = doc.data();
         pathways.push({
-          id: doc.id,
-          ...doc.data()
+          id: data.id || doc.id, // Prefer the pathway's own ID if available
+          ...data
         });
       });
+      
+      // Execute the second query for all pathways
+      const allSnapshot = await getDocs(unspecifiedQuery);
+      
+      // Process pathways that don't have isActive field (consider them active by default)
+      allSnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Only add if isActive is undefined (not present) and not already in our list
+        if (data.isActive === undefined && !pathways.some(p => p.id === (data.id || doc.id))) {
+          pathways.push({
+            id: data.id || doc.id,
+            ...data,
+            isActive: true // Default to true if not set
+          });
+        }
+      });
+
+      console.log(`📋 Found ${pathways.length} active pathways for user ${userId}`);
 
       // Sort by createdAt in JavaScript instead of Firestore
       return pathways.sort((a, b) => {
@@ -1229,7 +1313,7 @@ class StudyAbroadService {
       console.error('Error fetching user pathways:', error);
       return [];
     }
-  }  /**
+  }/**
    * Get user's existing pathway (most recent active pathway)
    */
   async getUserPathway(userId) {

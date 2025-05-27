@@ -27,11 +27,10 @@ export const useSubscriptionLimits = () => {
       console.log('✅ Using limits from subscription service:', currentLimits);
     } else {
       // Fallback to hardcoded limits if subscription service doesn't provide them
-      console.log('⚠️ No limits in subscription data, using fallback limits');
-      const fallbackPlanLimits = {
+      console.log('⚠️ No limits in subscription data, using fallback limits');      const fallbackPlanLimits = {
         free: {
           pathwaysPerMonth: 1,
-          uniGuideProUsage: 5, // Free users get 5 uses
+          uniGuideProUsage: 3, // Free users get 3 uses
           myStudyPathUsage: 0, // No access for free users
           universityComparisons: 3,
           pdfExports: 0,
@@ -112,10 +111,11 @@ export const useSubscriptionLimits = () => {
       switch (action) {        case 'generatePathway':
         case 'pathway_generation':
           const canGenerateDefault = defaultFreeUsage.pathwaysGenerated < 1;
-          return canGenerateDefault;          case 'useUniGuidePro':
+          return canGenerateDefault;        case 'useUniGuidePro':
           // Check if free users have reached their limit
-          const usageLimit = planType === 'free' ? 5 : planType === 'premium' ? 10 : -1;
+          const usageLimit = planType === 'free' ? 3 : planType === 'premium' ? 10 : -1;
           const currentUsage = defaultFreeUsage.uniGuideProUsage || 0;
+          console.log('🔍 UniGuidePro usage check:', { usageLimit, currentUsage, planType });
           const canUse = usageLimit === -1 || currentUsage < usageLimit;
           return canUse;case 'useMyStudyPath':
           // MyStudyPath is a premium feature - requires paid plan
